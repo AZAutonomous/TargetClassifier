@@ -14,258 +14,273 @@ https://arxiv.org/pdf/1409.6070.pdf
 import numpy as np
 import tensorflow as tf
 
-class SparseNet(object):
-	def __init__(self, hps, images, labels, mode):
-	"""SparseNet constructor
+# Collection containing all the variables created
+MODEL_VARIABLES = '_model_variables_'
+
+# Collection containing the variables that are created with restore=True.
+VARIABLES_TO_RESTORE = '_variables_to_restore_'
+
+
+def inference(images, num_classes, for_training=False, restore_logits=True,
+              scope=None):
+  """Build SparseConvNet with Fractional Max Pooling model architecture.
+  
+  Related papers:
+  https://arxiv.org/pdf/1412.6071.pdf
+  https://arxiv.org/pdf/1409.6070.pdf
+  
+  Args:
+    images: Images returned from inputs() or distorted_inputs().
+    num_classes: number of classes
+    for_training: If set to `True`, build the inference model for training.
+      Kernels that operate differently for inference during training
+      e.g. dropout, are appropriately configured.
+    restore_logits: whether or not the logits layers should be restored.
+      Useful for fine-tuning a model with different num_classes.
+    scope: optional prefix string identifier
+
+  Returns:
+    Logits. 2-D float Tensor.
+    Auxiliary Logits. 2-D float Tensor of side-head. Used for training only.
+  """
+  # BatchNorm -- TODO
+  
+  # Weight decay -- TODO
+  # slim/inception_model.inception_v3
+  # Collect relevant activations for external use, e.g. summaries or losses
+  end_points = {}
+  # TODO: Dropout, auxiliary nodes, stuff
+  # TODO: BatchNorm params (from Inception: batch_norm_decay=0.9997, batch_norm_epsilon=0.001)
+  with tf.name_scope(scope, 'sparseconvnet', [images]):
+    # 94 x 94 x 3
+	end_points['conv0'] = _conv2d(images, num_filters_out=160, kernel_size=2, scope='conv0',
+	                              weight_decay=0.00004, stddev=0.1)
+	# 93 x 93 x 160
+	with tf.variable_scope('fmp0'):
+	  end_points['fmp0'] = tf.nn.fractional_max_pool(end_points['conv0'], [1, tf.pow(2, 0.333), tf.pow(2, 0.333), 1],
+	                                                 pseudo_random=True, overlapping=True)
+	# 74 x 74 x 160
+	end_points['conv1'] = _conv2d(end_points['fmp0'], num_filters_out=160, kernel_size=2, scope='conv1',
+	                              weight_decay=0.00004, stddev=0.1)
+	# 73 x 73 x 320
+	with tf.variable_scope('fmp1'):
+	  end_points['fmp1'] = tf.nn.fractional_max_pool(end_points['conv1'], [1, tf.pow(2, 0.333), tf.pow(2, 0.333), 1],
+	                                                 pseudo_random=True, overlapping=True)
+	# 58 x 58 x 320
+	end_points['conv2'] = _conv2d(end_points['fmp1'], num_filters_out=320, kernel_size=2, scope='conv2',
+	                              weight_decay=0.00004, stddev=0.1)
+	# 57 x 57 x 480
+	with tf.variable_scope('fmp2'):
+	  end_points['fmp2'] = tf.nn.fractional_max_pool(end_points['conv2'], [1, tf.pow(2, 0.333), tf.pow(2, 0.333), 1],
+	                                                 pseudo_random=True, overlapping=True)
+	# 45 x 45 x 480
+	end_points['conv3'] = _conv2d(end_points['fmp2'], num_filters_out=480, kernel_size=2, scope='conv3',
+	                              weight_decay=0.00004, stddev=0.1)
+	# 44 x 44 x 640
+	with tf.variable_scope('fmp3'):
+	  end_points['fmp3'] = tf.nn.fractional_max_pool(end_points['conv3'], [1, tf.pow(2, 0.333), tf.pow(2, 0.333), 1],
+	                                                 pseudo_random=True, overlapping=True)
+	# 35 x 35 x 640
+	end_points['conv4'] = _conv2d(end_points['fmp3'], num_filters_out=640, kernel_size=2, scope='conv4',
+	                              weight_decay=0.00004, stddev=0.1)
+	# 34 x 34 x 800
+	with tf.variable_scope('fmp4'):
+	  end_points['fmp4'] = tf.nn.fractional_max_pool(end_points['conv4'], [1, tf.pow(2, 0.333), tf.pow(2, 0.333), 1],
+	                                                 pseudo_random=True, overlapping=True)
+	# 27 x 27 x 800
+	end_points['conv5'] = _conv2d(end_points['fmp4'], num_filters_out=800, kernel_size=2, scope='conv5',
+	                              weight_decay=0.00004, stddev=0.1)
+	# 26 x 26 x 960
+	with tf.variable_scope('fmp5'):
+	  end_points['fmp5'] = tf.nn.fractional_max_pool(end_points['conv5'], [1, tf.pow(2, 0.333), tf.pow(2, 0.333), 1],
+	                                                 pseudo_random=True, overlapping=True)
+	# 21 x 21 x 960
+	end_points['conv6'] = _conv2d(end_points['fmp5'], num_filters_out=960, kernel_size=2, scope='conv6',
+	                              weight_decay=0.00004, stddev=0.1)
+	# 20 x 20 x 1120
+	with tf.variable_scope('fmp6'):
+	  end_points['fmp6'] = tf.nn.fractional_max_pool(end_points['conv6'], [1, tf.pow(2, 0.333), tf.pow(2, 0.333), 1],
+	                                                 pseudo_random=True, overlapping=True)
+	# 16 x 16 x 1120
+	end_points['conv7'] = _conv2d(end_points['fmp6'], num_filters_out=1120, kernel_size=2, scope='conv7',
+	                              weight_decay=0.00004, stddev=0.1)
+	# 15 x 15 x 1280
+	with tf.variable_scope('fmp7'):
+	  end_points['fmp7'] = tf.nn.fractional_max_pool(end_points['conv7'], [1, tf.pow(2, 0.333), tf.pow(2, 0.333), 1],
+	                                                 pseudo_random=True, overlapping=True)
+	# 12 x 12 x 1280
+	end_points['conv8'] = _conv2d(end_points['fmp7'], num_filters_out=1280, kernel_size=2, scope='conv8',
+	                              weight_decay=0.00004, stddev=0.1)
+	# 11 x 11 x 1440
+	with tf.variable_scope('fmp8'):
+	  end_points['fmp8'] = tf.nn.fractional_max_pool(end_points['conv8'], [1, tf.pow(2, 0.333), tf.pow(2, 0.333), 1],
+	                                                 pseudo_random=True, overlapping=True)
+	# 9 x 9 x 1440
+	end_points['conv9'] = _conv2d(end_points['fmp8'], num_filters_out=1440, kernel_size=2, scope='conv9',
+	                              weight_decay=0.00004, stddev=0.1)
+	# 8 x 8 x 1600
+	with tf.variable_scope('fmp9'):
+	  end_points['fmp9'] = tf.nn.fractional_max_pool(end_points['conv9'], [1, tf.pow(2, 0.333), tf.pow(2, 0.333), 1],
+	                                                 pseudo_random=True, overlapping=True)
+	# 6 x 6 x 1600
+	end_points['conv10'] = _conv2d(end_points['fmp9'], num_filters_out=1600, kernel_size=2, scope='conv10',
+	                               weight_decay=0.00004, stddev=0.1)
+	# 5 x 5 x 1760
+	with tf.variable_scope('fmp10'):
+	  end_points['fmp10'] = tf.nn.fractional_max_pool(end_points['conv10'], [1, tf.pow(2, 0.333), tf.pow(2, 0.333), 1],
+	                                                 pseudo_random=True, overlapping=True)
+	# 4 x 4 x 1760
+	end_points['conv11'] = _conv2d(end_points['fmp10'], num_filters_out=1760, kernel_size=2, scope='conv11',
+	                               weight_decay=0.00004, stddev=0.1)
+	# 3 x 3 x 1920
+	with tf.variable_scope('fmp11'):
+	  end_points['fmp11'] = tf.nn.fractional_max_pool(end_points['conv11'], [1, tf.pow(2, 0.333), tf.pow(2, 0.333), 1],
+	                                                 pseudo_random=True, overlapping=True)
+	# 2 x 2 x 1920
+	end_points['conv12'] = _conv2d(end_points['fmp11'], num_filters_out=1920, kernel_size=2, scope='conv12',
+	                               weight_decay=0.00004, stddev=0.1)
+	# 1 x 1 x 2080
+	end_points['fc0'] = _conv2d(end_points['conv12'], num_filters_out=2080, kernel_size=2, scope='fc0',
+	                            weight_decay=0.00004, stddev=0.1)
+	# 1 x 1 x 2240
+	# TODO: dropout
+	# TODO: flatten
+	# 2240
+	logits = _conv2d(end_points['fc0'], num_filters_out=num_classes, kernel_size=1, scope='fc1') # ??? TODO
+	# num_classes
+	end_points['logits'] = logits
+	end_points['predictions'] = tf.nn.softmax('logits', name='predictions')
+	# Outputs 1 x 1 x num_classes
 	
-	Args:
-		hps: Hyperparameters
-		images: Batches of images. [batch_size, image_size, image_size, image_channels]
-		labels: Batches of labels. [batch_size, num_classes]
-		mode: 'train' or 'eval'
-	"""
-    self.hps = hps
-    self._images = images
-    self.labels = labels
-    self.mode = mode
+  
+  # Add summaries for TensorBoard visualization
+  
+  # Grab logits associated with the side head -- TODO
+  auxiliary_logits = endpoints['aux_logits']
+  
+  return logits, auxiliary_logits
+ 
+'''
+def loss(logits, labels, batch_size=None):
+  """Adds all losses for the model.
 
-    self._extra_train_ops = []
+  Note the final loss is not returned. Instead, the list of losses are collected
+  by slim.losses. The losses are accumulated in tower_loss() and summed to
+  calculate the total loss.
+
+  Args:
+    logits: List of logits from inference(). Each entry is a 2-D float Tensor.
+    labels: Labels from distorted_inputs or inputs(). 1-D tensor
+            of shape [batch_size]
+    batch_size: integer
+  """
+  if not batch_size:
+    batch_size = FLAGS.batch_size
+
+  # Reshape the labels into a dense Tensor of
+  # shape [FLAGS.batch_size, num_classes].
+  sparse_labels = tf.reshape(labels, [batch_size, 1])
+  indices = tf.reshape(tf.range(batch_size), [batch_size, 1])
+  concated = tf.concat(1, [indices, sparse_labels])
+  num_classes = logits[0].get_shape()[-1].value
+  dense_labels = tf.sparse_to_dense(concated,
+                                    [batch_size, num_classes],
+                                    1.0, 0.0)
+
+  # Cross entropy loss for the main softmax prediction.
+  slim.losses.cross_entropy_loss(logits[0],
+                                 dense_labels,
+                                 label_smoothing=0.1,
+                                 weight=1.0)
+
+  # Cross entropy loss for the auxiliary softmax head.
+  slim.losses.cross_entropy_loss(logits[1],
+                                 dense_labels,
+                                 label_smoothing=0.1,
+                                 weight=0.4,
+                                 scope='aux_loss')
+'''
+
+def _conv2d(inputs,
+           num_filters_out,
+           kernel_size,
+           stride=1,
+           padding='SAME',
+           activation_fn=_relu,
+           stddev=0.01,
+           bias=0.0,
+           weight_decay=0,
+           batch_norm_params=None,
+           is_training=True,
+           trainable=True,
+           scope=None,
+           reuse=None):
+  """Adds a 2D convolution followed by an optional batch_norm layer.
+
+  conv2d creates a variable called 'weights', representing the convolutional
+  kernel, that is convolved with the input. If `batch_norm_params` is None, a
+  second variable called 'biases' is added to the result of the convolution
+  operation.
+
+  Args:
+    inputs: a tensor of size [batch_size, height, width, channels].
+    num_filters_out: the number of output filters (depth).
+    kernel_size: an int representing the dimensions of a (square) filter
+    stride: an int representing stride in both x and y
+    padding: one of 'VALID' or 'SAME'.
+    activation: activation function.
+    stddev: standard deviation of the truncated guassian weight distribution.
+    bias: the initial value of the biases.
+    weight_decay: the weight decay.
+    batch_norm_params: parameters for the batch_norm. If is None don't use it.
+    is_training: whether or not the model is in training mode.
+    trainable: whether or not the variables should be trainable or not.
+    restore: whether or not the variables should be marked for restore.
+    scope: Optional scope for variable_scope.
+    reuse: whether or not the layer and its variables should be reused. To be
+      able to reuse the layer scope must be given.
+  Returns:
+    a tensor representing the output of the operation.
+
+  """
+  with tf.variable_scope(scope, 'Conv', [inputs], reuse=reuse):
+    num_filters_in = inputs.get_shape()[-1]
+    weights_shape = [kernel_size, kernel_size,
+                     num_filters_in, num_filters_out]
+    weights_initializer = tf.truncated_normal_initializer(stddev=stddev)
+    l2_regularizer = None
+    if weight_decay and weight_decay > 0:
+      l2_regularizer = losses.l2_regularizer(weight_decay)
 	
-	def build_graph(self):
-	"""Build entire tf graph"""
+	weights = tf.get_variable('weights', shape=weights_shape,
+	                           dtype=tf.float32, initializer=weights_initializer,
+							   regularizer=l2_regularizer, trainable=trainable,
+							   collections=[tf.GraphKeys.GLOBAL_VARIABLES]) # TODO -- what are collections?
+	# Add convolution to graph -- y_int = (w*x)
+    conv = tf.nn.conv2d(inputs, weights, [1, stride, stride, 1],
+                        padding=padding)
+						
+    if batch_norm_params is not None:
+	  print('warning: sparsenet_model.py(line 160) --	batch_norm disabled')
+      # with scopes.arg_scope([batch_norm], is_training=is_training,
+                            # trainable=trainable, restore=restore):
+        # outputs = batch_norm(conv, **batch_norm_params)
+    else:
+      bias_shape = [num_filters_out,]
+      bias_initializer = tf.constant_initializer(bias)
+	  biases = tf.get_variable('biases', shape=bias_shape,
+	                           dtype=tf.float32, initializer=bias_initializer,
+							   trainable=trainable,
+							   collections=[tf.GraphKeys.GLOBAL_VARIABLES]) # But really what are collections?
+	  # Add biases to graph -- y = y_int + b = (w*x + b) 
+      outputs = tf.nn.bias_add(conv, biases)
+    if activation:
+	  # Get activiation -- a = f(y), f = activation_fn
+      outputs = activation_fn(outputs)
+    return outputs
 	
-
-  def _stride_arr(self, stride):
-    """Map a stride scalar to the stride array for tf.nn.conv2d."""
-    return [1, stride, stride, 1]
-
-  def _build_model(self):
-    """Build the core model within the graph."""
-    # with tf.variable_scope('init'):
-      # x = self._images
-      # x = self._conv('init_conv', x, 3, 3, 16, self._stride_arr(1))
-
-    # strides = [1, 2, 2]
-    # activate_before_residual = [True, False, False]
-    # if self.hps.use_bottleneck:
-      # res_func = self._bottleneck_residual
-      # filters = [16, 64, 128, 256]
-    # else:
-      # res_func = self._residual
-      # filters = [16, 16, 32, 64]
-      # # Uncomment the following codes to use w28-10 wide residual network.
-      # # It is more memory efficient than very deep residual network and has
-      # # comparably good performance.
-      # # https://arxiv.org/pdf/1605.07146v1.pdf
-      # # filters = [16, 160, 320, 640]
-      # # Update hps.num_residual_units to 9
-
-    # with tf.variable_scope('unit_1_0'):
-      # x = res_func(x, filters[0], filters[1], self._stride_arr(strides[0]),
-                   # activate_before_residual[0])
-    # for i in six.moves.range(1, self.hps.num_residual_units):
-      # with tf.variable_scope('unit_1_%d' % i):
-        # x = res_func(x, filters[1], filters[1], self._stride_arr(1), False)
-
-    # with tf.variable_scope('unit_2_0'):
-      # x = res_func(x, filters[1], filters[2], self._stride_arr(strides[1]),
-                   # activate_before_residual[1])
-    # for i in six.moves.range(1, self.hps.num_residual_units):
-      # with tf.variable_scope('unit_2_%d' % i):
-        # x = res_func(x, filters[2], filters[2], self._stride_arr(1), False)
-
-    # with tf.variable_scope('unit_3_0'):
-      # x = res_func(x, filters[2], filters[3], self._stride_arr(strides[2]),
-                   # activate_before_residual[2])
-    # for i in six.moves.range(1, self.hps.num_residual_units):
-      # with tf.variable_scope('unit_3_%d' % i):
-        # x = res_func(x, filters[3], filters[3], self._stride_arr(1), False)
-
-    # with tf.variable_scope('unit_last'):
-      # x = self._batch_norm('final_bn', x)
-      # x = self._relu(x, self.hps.relu_leakiness)
-      # x = self._global_avg_pool(x)
-
-    # with tf.variable_scope('logit'):
-      # logits = self._fully_connected(x, self.hps.num_classes)
-      # self.predictions = tf.nn.softmax(logits)
-
-    # with tf.variable_scope('costs'):
-      # xent = tf.nn.softmax_cross_entropy_with_logits(
-          # logits=logits, labels=self.labels)
-      # self.cost = tf.reduce_mean(xent, name='xent')
-      # self.cost += self._decay()
-
-      # tf.summary.scalar('cost', self.cost)
-
-  def _build_train_op(self):
-    """Build training specific ops for the graph."""
-    # self.lrn_rate = tf.constant(self.hps.lrn_rate, tf.float32)
-    # tf.summary.scalar('learning rate', self.lrn_rate)
-
-    # trainable_variables = tf.trainable_variables()
-    # grads = tf.gradients(self.cost, trainable_variables)
-
-    # if self.hps.optimizer == 'sgd':
-      # optimizer = tf.train.GradientDescentOptimizer(self.lrn_rate)
-    # elif self.hps.optimizer == 'mom':
-      # optimizer = tf.train.MomentumOptimizer(self.lrn_rate, 0.9)
-
-    # apply_op = optimizer.apply_gradients(
-        # zip(grads, trainable_variables),
-        # global_step=self.global_step, name='train_step')
-
-    # train_ops = [apply_op] + self._extra_train_ops
-    # self.train_op = tf.group(*train_ops)
-
-  # TODO(xpan): Consider batch_norm in contrib/layers/python/layers/layers.py
-  def _batch_norm(self, name, x):
-    """Batch normalization."""
-    # with tf.variable_scope(name):
-      # params_shape = [x.get_shape()[-1]]
-
-      # beta = tf.get_variable(
-          # 'beta', params_shape, tf.float32,
-          # initializer=tf.constant_initializer(0.0, tf.float32))
-      # gamma = tf.get_variable(
-          # 'gamma', params_shape, tf.float32,
-          # initializer=tf.constant_initializer(1.0, tf.float32))
-
-      # if self.mode == 'train':
-        # mean, variance = tf.nn.moments(x, [0, 1, 2], name='moments')
-
-        # moving_mean = tf.get_variable(
-            # 'moving_mean', params_shape, tf.float32,
-            # initializer=tf.constant_initializer(0.0, tf.float32),
-            # trainable=False)
-        # moving_variance = tf.get_variable(
-            # 'moving_variance', params_shape, tf.float32,
-            # initializer=tf.constant_initializer(1.0, tf.float32),
-            # trainable=False)
-
-        # self._extra_train_ops.append(moving_averages.assign_moving_average(
-            # moving_mean, mean, 0.9))
-        # self._extra_train_ops.append(moving_averages.assign_moving_average(
-            # moving_variance, variance, 0.9))
-      # else:
-        # mean = tf.get_variable(
-            # 'moving_mean', params_shape, tf.float32,
-            # initializer=tf.constant_initializer(0.0, tf.float32),
-            # trainable=False)
-        # variance = tf.get_variable(
-            # 'moving_variance', params_shape, tf.float32,
-            # initializer=tf.constant_initializer(1.0, tf.float32),
-            # trainable=False)
-        # tf.histogram_summary(mean.op.name, mean)
-        # tf.histogram_summary(variance.op.name, variance)
-      # # elipson used to be 1e-5. Maybe 0.001 solves NaN problem in deeper net.
-      # y = tf.nn.batch_normalization(
-          # x, mean, variance, beta, gamma, 0.001)
-      # y.set_shape(x.get_shape())
-      # return y
-
-  def _residual(self, x, in_filter, out_filter, stride,
-                activate_before_residual=False):
-    """Residual unit with 2 sub layers."""
-    # if activate_before_residual:
-      # with tf.variable_scope('shared_activation'):
-        # x = self._batch_norm('init_bn', x)
-        # x = self._relu(x, self.hps.relu_leakiness)
-        # orig_x = x
-    # else:
-      # with tf.variable_scope('residual_only_activation'):
-        # orig_x = x
-        # x = self._batch_norm('init_bn', x)
-        # x = self._relu(x, self.hps.relu_leakiness)
-
-    # with tf.variable_scope('sub1'):
-      # x = self._conv('conv1', x, 3, in_filter, out_filter, stride)
-
-    # with tf.variable_scope('sub2'):
-      # x = self._batch_norm('bn2', x)
-      # x = self._relu(x, self.hps.relu_leakiness)
-      # x = self._conv('conv2', x, 3, out_filter, out_filter, [1, 1, 1, 1])
-
-    # with tf.variable_scope('sub_add'):
-      # if in_filter != out_filter:
-        # orig_x = tf.nn.avg_pool(orig_x, stride, stride, 'VALID')
-        # orig_x = tf.pad(
-            # orig_x, [[0, 0], [0, 0], [0, 0],
-                     # [(out_filter-in_filter)//2, (out_filter-in_filter)//2]])
-      # x += orig_x
-
-    # tf.logging.info('image after unit %s', x.get_shape())
-    # return x
-
-  def _bottleneck_residual(self, x, in_filter, out_filter, stride,
-                           activate_before_residual=False):
-    """Bottleneck residual unit with 3 sub layers."""
-    # if activate_before_residual:
-      # with tf.variable_scope('common_bn_relu'):
-        # x = self._batch_norm('init_bn', x)
-        # x = self._relu(x, self.hps.relu_leakiness)
-        # orig_x = x
-    # else:
-      # with tf.variable_scope('residual_bn_relu'):
-        # orig_x = x
-        # x = self._batch_norm('init_bn', x)
-        # x = self._relu(x, self.hps.relu_leakiness)
-
-    # with tf.variable_scope('sub1'):
-      # x = self._conv('conv1', x, 1, in_filter, out_filter/4, stride)
-
-    # with tf.variable_scope('sub2'):
-      # x = self._batch_norm('bn2', x)
-      # x = self._relu(x, self.hps.relu_leakiness)
-      # x = self._conv('conv2', x, 3, out_filter/4, out_filter/4, [1, 1, 1, 1])
-
-    # with tf.variable_scope('sub3'):
-      # x = self._batch_norm('bn3', x)
-      # x = self._relu(x, self.hps.relu_leakiness)
-      # x = self._conv('conv3', x, 1, out_filter/4, out_filter, [1, 1, 1, 1])
-
-    # with tf.variable_scope('sub_add'):
-      # if in_filter != out_filter:
-        # orig_x = self._conv('project', orig_x, 1, in_filter, out_filter, stride)
-      # x += orig_x
-
-    # tf.logging.info('image after unit %s', x.get_shape())
-    # return x
-
-  def _decay(self):
-    """L2 weight decay loss."""
-    # costs = []
-    # for var in tf.trainable_variables():
-      # if var.op.name.find(r'DW') > 0:
-        # costs.append(tf.nn.l2_loss(var))
-        # # tf.histogram_summary(var.op.name, var)
-
-    # return tf.multiply(self.hps.weight_decay_rate, tf.add_n(costs))
-
-  def _conv(self, name, x, filter_size, in_filters, out_filters, strides):
-    """Convolution."""
-    # with tf.variable_scope(name):
-      # n = filter_size * filter_size * out_filters
-      # kernel = tf.get_variable(
-          # 'DW', [filter_size, filter_size, in_filters, out_filters],
-          # tf.float32, initializer=tf.random_normal_initializer(
-              # stddev=np.sqrt(2.0/n)))
-      # return tf.nn.conv2d(x, kernel, strides, padding='SAME')
-
-  def _relu(self, x, leakiness=0.0):
-    """Relu, with optional leaky support."""
-    # return tf.where(tf.less(x, 0.0), leakiness * x, x, name='leaky_relu')
-
-  def _fully_connected(self, x, out_dim):
-    """FullyConnected layer for final output."""
-    # x = tf.reshape(x, [self.hps.batch_size, -1])
-    # w = tf.get_variable(
-        # 'DW', [x.get_shape()[1], out_dim],
-        # initializer=tf.uniform_unit_scaling_initializer(factor=1.0))
-    # b = tf.get_variable('biases', [out_dim],
-                        # initializer=tf.constant_initializer())
-    # return tf.nn.xw_plus_b(x, w, b)
-
-  def _global_avg_pool(self, x):
-    # assert x.get_shape().ndims == 4
-    # return tf.reduce_mean(x, [1, 2])
+  def _relu(input, leakiness=0.333):
+    """Relu, with optional leaky support. Defaults to VLEAKYRELU from SparseConvNet"""
+    return tf.where(tf.less(input, 0.0), leakiness * input, input, name='leaky_relu')
+	# Alternatively:
+	# return tf.maximum(leakiness * input, input)
