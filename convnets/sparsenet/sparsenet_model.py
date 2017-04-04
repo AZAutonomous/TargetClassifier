@@ -11,16 +11,136 @@ https://arxiv.org/pdf/1412.6071.pdf
 https://arxiv.org/pdf/1409.6070.pdf
 """
 
-import numpy as np
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import os
+import sys
+import tarfile
+
 import tensorflow as tf
 
-# Collection containing all the variables created
-MODEL_VARIABLES = '_model_variables_'
+FLAGS = tf.app.flags.FLAGS
 
-# Collection containing the variables that are created with restore=True.
-VARIABLES_TO_RESTORE = '_variables_to_restore_'
+# Basic model parameters
+tf.app.flags.DEFINE_integer('batch_size', 64, 
+                            """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_string('data_dir', '/tmp/cifar10_data',
+                           """Path to the data directory.""")
+tf.app.flags.DEFINE_boolean('use_fp16', False,
+                            """Train the model using fp16.""")
+
+# Global constants describing dataset
+# TODO
+
+# Constants describing the training process
+MOVING_AVERAGE_DECAY = 0.9999
+NUM_EPOCHS_PER_DECAY = 350.0
+LEARNING_RATE_DECAY_FACTOR = 0.1
+INITIAL_LEARNING_RATE = 0.1
+
+# Utilities
+def _activation_summary(x):
+  """Helper to create summaries for activations.
+
+  Creates a summary that provides a histogram of activations.
+  Creates a summary that measures the sparsity of activations.
+
+  Args:
+    x: Tensor
+  Returns:
+    nothing
+  """
+  pass # TODO
 
 
+# Submodules 
+def _relu(input, leakiness=0.333):
+  """Relu, with optional leaky support. Defaults to VLEAKYRELU from SparseConvNet"""
+  return tf.where(tf.less(input, 0.0), leakiness * input, input, name='leaky_relu')
+      # Alternatively:
+      # return tf.maximum(leakiness * input, input)
+
+def _conv2d(inputs,
+           num_filters_out,
+           kernel_size,
+           stride=1,
+           padding='SAME',
+           activation_fn=_relu,
+           stddev=0.01,
+           bias=0.0,
+           weight_decay=0,
+           batch_norm_params=None,
+           is_training=True,
+           trainable=True,
+           scope=None,
+           reuse=None):
+  """Adds a 2D convolution followed by an optional batch_norm layer.
+
+  conv2d creates a variable called 'weights', representing the convolutional
+  kernel, that is convolved with the input. If `batch_norm_params` is None, a
+  second variable called 'biases' is added to the result of the convolution
+  operation.
+
+  Args:
+    inputs: a tensor of size [batch_size, height, width, channels].
+    num_filters_out: the number of output filters (depth).
+    kernel_size: an int representing the dimensions of a (square) filter
+    stride: an int representing stride in both x and y
+    padding: one of 'VALID' or 'SAME'.
+    activation: activation function.
+    stddev: standard deviation of the truncated guassian weight distribution.
+    bias: the initial value of the biases.
+    weight_decay: the weight decay.
+    batch_norm_params: parameters for the batch_norm. If is None don't use it.
+    is_training: whether or not the model is in training mode.
+    trainable: whether or not the variables should be trainable or not.
+    restore: whether or not the variables should be marked for restore.
+    scope: Optional scope for variable_scope.
+    reuse: whether or not the layer and its variables should be reused. To be
+      able to reuse the layer scope must be given.
+  Returns:
+    a tensor representing the output of the operation.
+
+  """
+  with tf.variable_scope(scope, 'Conv', [inputs], reuse=reuse):
+    num_filters_in = inputs.get_shape()[-1]
+    weights_shape = [kernel_size, kernel_size,
+                     num_filters_in, num_filters_out]
+    weights_initializer = tf.truncated_normal_initializer(stddev=stddev)
+    l2_regularizer = None
+    if weight_decay and weight_decay > 0:
+      l2_regularizer = losses.l2_regularizer(weight_decay)
+	
+	weights = tf.get_variable('weights', shape=weights_shape,
+	                           dtype=tf.float32, initializer=weights_initializer,
+							   regularizer=l2_regularizer, trainable=trainable,
+							   collections=[tf.GraphKeys.GLOBAL_VARIABLES]) # TODO -- what are collections?
+	# Add convolution to graph -- y_int = (w*x)
+    conv = tf.nn.conv2d(inputs, weights, [1, stride, stride, 1],
+                        padding=padding)
+						
+    if batch_norm_params is not None:
+	  print('warning: sparsenet_model.py(line 160) --	batch_norm disabled')
+      # with scopes.arg_scope([batch_norm], is_training=is_training,
+                            # trainable=trainable, restore=restore):
+        # outputs = batch_norm(conv, **batch_norm_params)
+    else:
+      bias_shape = [num_filters_out,]
+      bias_initializer = tf.constant_initializer(bias)
+	  biases = tf.get_variable('biases', shape=bias_shape,
+	                           dtype=tf.float32, initializer=bias_initializer,
+							   trainable=trainable,
+							   collections=[tf.GraphKeys.GLOBAL_VARIABLES]) # But really what are collections?
+	  # Add biases to graph -- y = y_int + b = (w*x + b) 
+      outputs = tf.nn.bias_add(conv, biases)
+    if activation:
+	  # Get activiation -- a = f(y), f = activation_fn
+      outputs = activation_fn(outputs)
+    return outputs
+	
+# Main model functions
 def inference(images, num_classes, for_training=False, restore_logits=True,
               scope=None):
   """Build SparseConvNet with Fractional Max Pooling model architecture.
@@ -201,86 +321,8 @@ def loss(logits, labels, batch_size=None):
                                  scope='aux_loss')
 '''
 
-def _conv2d(inputs,
-           num_filters_out,
-           kernel_size,
-           stride=1,
-           padding='SAME',
-           activation_fn=_relu,
-           stddev=0.01,
-           bias=0.0,
-           weight_decay=0,
-           batch_norm_params=None,
-           is_training=True,
-           trainable=True,
-           scope=None,
-           reuse=None):
-  """Adds a 2D convolution followed by an optional batch_norm layer.
+# TODO
+def train():
+    pass
 
-  conv2d creates a variable called 'weights', representing the convolutional
-  kernel, that is convolved with the input. If `batch_norm_params` is None, a
-  second variable called 'biases' is added to the result of the convolution
-  operation.
 
-  Args:
-    inputs: a tensor of size [batch_size, height, width, channels].
-    num_filters_out: the number of output filters (depth).
-    kernel_size: an int representing the dimensions of a (square) filter
-    stride: an int representing stride in both x and y
-    padding: one of 'VALID' or 'SAME'.
-    activation: activation function.
-    stddev: standard deviation of the truncated guassian weight distribution.
-    bias: the initial value of the biases.
-    weight_decay: the weight decay.
-    batch_norm_params: parameters for the batch_norm. If is None don't use it.
-    is_training: whether or not the model is in training mode.
-    trainable: whether or not the variables should be trainable or not.
-    restore: whether or not the variables should be marked for restore.
-    scope: Optional scope for variable_scope.
-    reuse: whether or not the layer and its variables should be reused. To be
-      able to reuse the layer scope must be given.
-  Returns:
-    a tensor representing the output of the operation.
-
-  """
-  with tf.variable_scope(scope, 'Conv', [inputs], reuse=reuse):
-    num_filters_in = inputs.get_shape()[-1]
-    weights_shape = [kernel_size, kernel_size,
-                     num_filters_in, num_filters_out]
-    weights_initializer = tf.truncated_normal_initializer(stddev=stddev)
-    l2_regularizer = None
-    if weight_decay and weight_decay > 0:
-      l2_regularizer = losses.l2_regularizer(weight_decay)
-	
-	weights = tf.get_variable('weights', shape=weights_shape,
-	                           dtype=tf.float32, initializer=weights_initializer,
-							   regularizer=l2_regularizer, trainable=trainable,
-							   collections=[tf.GraphKeys.GLOBAL_VARIABLES]) # TODO -- what are collections?
-	# Add convolution to graph -- y_int = (w*x)
-    conv = tf.nn.conv2d(inputs, weights, [1, stride, stride, 1],
-                        padding=padding)
-						
-    if batch_norm_params is not None:
-	  print('warning: sparsenet_model.py(line 160) --	batch_norm disabled')
-      # with scopes.arg_scope([batch_norm], is_training=is_training,
-                            # trainable=trainable, restore=restore):
-        # outputs = batch_norm(conv, **batch_norm_params)
-    else:
-      bias_shape = [num_filters_out,]
-      bias_initializer = tf.constant_initializer(bias)
-	  biases = tf.get_variable('biases', shape=bias_shape,
-	                           dtype=tf.float32, initializer=bias_initializer,
-							   trainable=trainable,
-							   collections=[tf.GraphKeys.GLOBAL_VARIABLES]) # But really what are collections?
-	  # Add biases to graph -- y = y_int + b = (w*x + b) 
-      outputs = tf.nn.bias_add(conv, biases)
-    if activation:
-	  # Get activiation -- a = f(y), f = activation_fn
-      outputs = activation_fn(outputs)
-    return outputs
-	
-  def _relu(input, leakiness=0.333):
-    """Relu, with optional leaky support. Defaults to VLEAKYRELU from SparseConvNet"""
-    return tf.where(tf.less(input, 0.0), leakiness * input, input, name='leaky_relu')
-	# Alternatively:
-	# return tf.maximum(leakiness * input, input)
