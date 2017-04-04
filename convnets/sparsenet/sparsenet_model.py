@@ -287,7 +287,6 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
                                   scope='conv0',
                                   weight_decay=0.00004, stddev=0.1)
     # 93 x 93 x 160
-# TODO: Replace all FMP nodes with _fmp declaration
     end_points['fmp0'] = _fmp(end_points['conv0'], tf.pow(2, 0.333), 
                               pseudo_random=True, overlapping=True, 
                               scope='fmp0')
@@ -296,78 +295,57 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
                                   kernel_size=2, scope='conv1',
                                   weight_decay=0.00004, stddev=0.1)
     # 73 x 73 x 320
-    with tf.variable_scope('fmp1'):
-      end_points['fmp1'] = tf.nn.fractional_max_pool(end_points['conv1'],
-                                                     [1, tf.pow(2, 0.333),
-                                                      tf.pow(2, 0.333), 1],
-                                                     pseudo_random=True,
-                                                     overlapping=True)
+    end_points['fmp1'] = _fmp(end_points['conv1'], tf.pow(2, 0.333),
+                              pseudo_random=True, overlapping=True,
+                              scope='fmp1')
     # 58 x 58 x 320
     end_points['conv2'] = _conv2d(end_points['fmp1'], num_filters_out=320, 
                                   kernel_size=2, scope='conv2',
                                   weight_decay=0.00004, stddev=0.1)
     # 57 x 57 x 480
-    with tf.variable_scope('fmp2'):
-      end_points['fmp2'] = tf.nn.fractional_max_pool(end_points['conv2'],
-                                                     [1, tf.pow(2, 0.333),
-                                                      tf.pow(2, 0.333), 1],
-                                                     pseudo_random=True, 
-                                                     overlapping=True)
+    end_points['fmp2'] = _fmp(end_points['conv2'], tf.pow(2, 0.333),
+                              pseudo_random=True, overlapping=True,
+                              scope='fmp2')
     # 45 x 45 x 480
     end_points['conv3'] = _conv2d(end_points['fmp2'], num_filters_out=480, 
                                   kernel_size=2, scope='conv3',
                                   weight_decay=0.00004, stddev=0.1)
     # 44 x 44 x 640
-    with tf.variable_scope('fmp3'):
-      end_points['fmp3'] = tf.nn.fractional_max_pool(end_points['conv3'],
-                                                     [1, tf.pow(2, 0.333),
-                                                      tf.pow(2, 0.333), 1],
-                                                     pseudo_random=True,
-                                                     overlapping=True)
+    end_points['fmp3'] = _fmp(end_points['conv3'], tf.pow(2, 0.333),
+                              pseudo_random=True, overlapping=True,
+                              scope='fmp3')
     # 35 x 35 x 640
     end_points['conv4'] = _conv2d(end_points['fmp3'], num_filters_out=640, 
                                   kernel_size=2, scope='conv4',
                                   weight_decay=0.00004, stddev=0.1)
     # 34 x 34 x 800
-    with tf.variable_scope('fmp4'):
-      end_points['fmp4'] = tf.nn.fractional_max_pool(end_points['conv4'],
-                                                     [1, tf.pow(2, 0.333),
-                                                      tf.pow(2, 0.333), 1],
-                                                     pseudo_random=True,
-                                                     overlapping=True)
+    end_points['fmp4'] = _fmp(end_points['conv4'], tf.pow(2, 0.333),
+                              pseudo_random=True, overlapping=True,
+                              scope='fmp4')
     # 27 x 27 x 800
     end_points['conv5'] = _conv2d(end_points['fmp4'], num_filters_out=800, 
                                   kernel_size=2, scope='conv5',
                                   weight_decay=0.00004, stddev=0.1)
     # 26 x 26 x 960
-    with tf.variable_scope('fmp5'):
-      end_points['fmp5'] = tf.nn.fractional_max_pool(end_points['conv5'],
-                                                     [1, tf.pow(2, 0.333),
-                                                      tf.pow(2, 0.333), 1],
-                                                     pseudo_random=True,
-                                                     overlapping=True)
+    end_points['fmp5'] = _fmp(end_points['conv5'], tf.pow(2, 0.333),
+                              pseudo_random=True, overlapping=True,
+                              scope='fmp5')
     # 21 x 21 x 960
     end_points['conv6'] = _conv2d(end_points['fmp5'], num_filters_out=960, 
                                   kernel_size=2, scope='conv6',
                                   weight_decay=0.00004, stddev=0.1)
     # 20 x 20 x 1120
-    with tf.variable_scope('fmp6'):
-      end_points['fmp6'] = tf.nn.fractional_max_pool(end_points['conv6'],
-                                                     [1, tf.pow(2, 0.333),
-                                                      tf.pow(2, 0.333), 1],
-                                                     pseudo_random=True,
-                                                     overlapping=True)
+    end_points['fmp6'] = _fmp(end_points['conv6'], tf.pow(2, 0.333),
+                              pseudo_random=True, overlapping=True,
+                              scope='fmp6')
     # 16 x 16 x 1120
     end_points['conv7'] = _conv2d(end_points['fmp6'], num_filters_out=1120, 
                                   kernel_size=2, scope='conv7',
                                   weight_decay=0.00004, stddev=0.1)
     # 15 x 15 x 1280
-    with tf.variable_scope('fmp7'):
-      end_points['fmp7'] = tf.nn.fractional_max_pool(end_points['conv7'],
-                                                     [1, tf.pow(2, 0.333),
-                                                      tf.pow(2, 0.333), 1],
-                                                     pseudo_random=True,
-                                                     overlapping=True)
+    end_points['fmp7'] = _fmp(end_points['conv7'], tf.pow(2, 0.333),
+                              pseudo_random=True, overlapping=True,
+                              scope='fmp7')
     # 12 x 12 x 1280
     end_points['conv8'] = _conv2d(end_points['fmp7'], num_filters_out=1280, 
                                   kernel_size=2, scope='conv8',
@@ -376,12 +354,9 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
     if for_training:
       end_points['conv8'] = tf.nn.dropout(end_points['conv8'], 0.1)
     # 11 x 11 x 1440
-    with tf.variable_scope('fmp8'):
-      end_points['fmp8'] = tf.nn.fractional_max_pool(end_points['conv8'],
-                                                     [1, tf.pow(2, 0.333),
-                                                      tf.pow(2, 0.333), 1],
-                                                     pseudo_random=True,
-                                                     overlapping=True)
+    end_points['fmp8'] = _fmp(end_points['conv8'], tf.pow(2, 0.333),
+                              pseudo_random=True, overlapping=True,
+                              scope='fmp8')
     # 9 x 9 x 1440
     end_points['conv9'] = _conv2d(end_points['fmp8'], num_filters_out=1440, 
                                   kernel_size=2, scope='conv9',
@@ -390,12 +365,9 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
     if for_training:
       end_points['conv9'] = tf.nn.dropout(end_points['conv9'], 0.2)
     # 8 x 8 x 1600
-    with tf.variable_scope('fmp9'):
-      end_points['fmp9'] = tf.nn.fractional_max_pool(end_points['conv9'],
-                                                     [1, tf.pow(2, 0.333),
-                                                      tf.pow(2, 0.333), 1],
-                                                     pseudo_random=True,
-                                                     overlapping=True)
+    end_points['fmp9'] = _fmp(end_points['conv9'], tf.pow(2, 0.333),
+                              pseudo_random=True, overlapping=True,
+                              scope='fmp9')
     # 6 x 6 x 1600
     end_points['conv10'] = _conv2d(end_points['fmp9'], num_filters_out=1600, 
                                   kernel_size=2, scope='conv10',
@@ -404,12 +376,9 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
     if for_training:
       end_points['conv10'] = tf.nn.dropout(end_points['conv10'], 0.3)
     # 5 x 5 x 1760
-    with tf.variable_scope('fmp10'):
-      end_points['fmp10'] = tf.nn.fractional_max_pool(end_points['conv10'],
-                                                     [1, tf.pow(2, 0.333),
-                                                      tf.pow(2, 0.333), 1],
-                                                     pseudo_random=True,
-                                                     overlapping=True)
+    end_points['fmp10'] = _fmp(end_points['conv10'], tf.pow(2, 0.333),
+                              pseudo_random=True, overlapping=True,
+                              scope='fmp10')
     # 4 x 4 x 1760
     end_points['conv11'] = _conv2d(end_points['fmp10'], num_filters_out=1760, 
                                   kernel_size=2, scope='conv11',
@@ -418,12 +387,9 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
     if for_training:
       end_points['conv11'] = tf.nn.dropout(end_points['conv11'], 0.4)
     # 3 x 3 x 1920
-    with tf.variable_scope('fmp11'):
-      end_points['fmp11'] = tf.nn.fractional_max_pool(end_points['conv11'],
-                                                     [1, tf.pow(2, 0.333),
-                                                      tf.pow(2, 0.333), 1],
-                                                     pseudo_random=True,
-                                                     overlapping=True)
+    end_points['fmp11'] = _fmp(end_points['conv11'], tf.pow(2, 0.333),
+                              pseudo_random=True, overlapping=True,
+                              scope='fmp11')
     # 2 x 2 x 1920
     end_points['conv12'] = _conv2d(end_points['fmp11'], num_filters_out=1920, 
                                   kernel_size=2, scope='conv12',
