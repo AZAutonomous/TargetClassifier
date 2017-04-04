@@ -87,3 +87,17 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# TensorFlow checkpoints and logs
+checkpoint
+events.out.tfevents*
+*.pbtxt
+*.ckpt*
+*.index
+*.meta
+
+# Datasets (CIFAR, etc)
+*_data/
+*.bin
+*.html
+*.tar*
