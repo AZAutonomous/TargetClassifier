@@ -1,3 +1,4 @@
+
 # File: wideresnet_model.py
 # Author: Arizona Autonomous
 # Description: This contains the base WideResNet model, originally
@@ -43,6 +44,9 @@ INITIAL_LEARNING_RATE = 0.1
 LEARNING_RATE_DECAY_FACTOR = 0.2
 WEIGHT_DECAY = 0.0005
 
+# Other global flags
+VARIABLES_TO_RESTORE = '_variables_to_restore_'
+
 # TODO: This whole function
 def inference(images, num_classes, for_training=False, restore_logits=True,
               scope=None):
@@ -67,20 +71,85 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
   # Set hyperparameters (optional, may hardcode)
   
   # Build graph
-  # -- create global_step (??)
-  # -- _build_model
-  # ---- _residual
-  # ------ orig_x = x
-  # ------ x = _batch_norm -> _relu -> _conv
-  # -------- _batch_norm: set-up and use tf.nn.batch_normalization
-  # -------- _relu: tf.where(tf.less(x, 0.0), leakiness * x, x, name='leaky_relu') (or tf.maximum?)
-  # -------- _conv: set up weights, use tf.nn.conv2d
-  # ------ NOTE: Check for dimension reduction (how to handle?)
-  # ------ x = x + orig_x (residual + shortcut)
-  
-  # Add summaries
-  
-  # Return logits (and auxiliary logits?)
+  with tf.variable_scope(scope, 'WideResNet', [inputs], reuse=True)
+    # Block 1:  (32x32x3)   -> (32x32x16)  -> (32x32x160)
+    block1 = _residual(inputs, 
+              16, 3, 1,
+			  160, 3, 1,
+              scope='residual_block1')
+	# Block 2:  (32x32x160) -> (32x32x160) -> (32x32x160)
+    block2 = _residual(inputs, 
+              160, 3, 1,
+			  160, 3, 1,
+              scope='residual_block2')
+	# Block 3:  (32x32x160) -> (32x32x160) -> (32x32x160)
+    block3 = _residual(inputs, 
+              160, 3, 1,
+			  160, 3, 1,
+              scope='residual_block3')
+	# Block 4:  (32x32x160) -> (32x32x160) -> (32x32x160)
+    block4 = _residual(inputs, 
+              160, 3, 1,
+			  160, 3, 1,
+              scope='residual_block4')
+	# Block 5:  (32x32x160) -> (32x32x160) -> (32x32x160)
+    block5 = _residual(inputs, 
+              160, 3, 1,
+			  160, 3, 1,
+              scope='residual_block5')
+	# Block 6:  (32x32x320) -> (16x16x320) -> (16x16x320)
+    block6 = _residual(inputs, 
+              320, 3, 1,
+			  320, 3, 1,
+              scope='residual_block6')
+	# Block 7:  (32x32x320) -> (16x16x320) -> (16x16x320)
+    block7 = _residual(inputs, 
+              320, 3, 1,
+			  320, 3, 1,
+              scope='residual_block7')
+	# Block 8:  (16x16x320) -> (16x16x320) -> (16x16x320)
+    block8 = _residual(inputs, 
+              320, 3, 1,
+			  320, 3, 1,
+              scope='residual_block8')
+	# Block 9:  (16x16x320) -> (16x16x320) -> (16x16x320)
+    block9 = _residual(inputs, 
+              320, 3, 1,
+			  320, 3, 1,
+              scope='residual_block9')
+	# Block 10: (16x16x320) -> (16x16x320) -> (8x8x640)
+    block10 = _residual(inputs, 
+              320, 3, 1,
+			  640, 3, 1,0')
+	# Block 11: (8x8x640)   -> (8x8x640)   -> (8x8x640)
+    block11 = _residual(inputs, 
+              640, 3, 1,
+			  640, 3, 1,
+              scope='residual_block11')
+	# Block 12: (8x8x640)   -> (8x8x640)   -> (8x8x640)
+    block12 = _residual(inputs, 
+              640, 3, 1,
+			  640, 3, 1,
+              scope='residual_block12')
+	# Block 13: (8x8x640)   -> (8x8x640)   -> (8x8x640)
+    block13 = _residual(inputs, 
+              640, 3, 1,
+			  640, 3, 1,
+              scope='residual_block13')
+	# Block 14: (8x8x640)   -> (8x8x640)   -> (8x8x640)
+    block14 = _residual(inputs, 
+              640, 3, 1,
+			  640, 3, 1,
+              scope='residual_block14')
+	
+	# Average Pool: (8x8x640) -> (1x1x640) # TODO: Check architecture??
+	pool = _avg_pool(block14, filter_size=8)
+	
+	# Fully connected: (1x1x640) -> (1x1xNUM_CLASSES)
+    logits = _conv(pool1, num_classes, 1, is_training=for_training,
+	               restore=restore_logits, scope='fc1')
+	
+	return logits
   
 # TODO: This whole function
 def loss(logits, labels, batch_size=None):
@@ -111,20 +180,154 @@ def loss(logits, labels, batch_size=None):
   # Calculate cross entropy loss of auxiliary softmax? (wth is this?)
   
 # Submodules
-# TODO: Batch norm. Like the whole thing.
-def _batch_norm(inputs, scope):
-  """Batch normalization"""
-  pass
+def _residual(inputs, 
+              num_filters_out_1, kernel_size_1, stride_1,
+			  num_filters_out_2, kernel_size_2, stride_2,
+              is_training=True, restore=True, scope=None, reuse=None):
+  """Residual unit, with 2 stacked (3x3) conv layers
+  
+  Args:
+    inputs: a tensor of size [batch_size, height, width, channels].
+    num_filters_out_1: the number of output filters for conv layer 1
+    kernel_size_1: an int representing the square filter size for conv layer 1
+    stride_1: an int representing stride in both x and y for conv layer 1
+    num_filters_out_2: the number of output filters for conv layer 2
+    kernel_size_2: an int representing the square filter size for conv layer 2
+    stride_2: an int representing stride in both x and y for conv layer 2
+    is_training: whether or not the model is in training mode.
+    trainable: whether or not the variables should be trainable or not.
+    restore: whether or not the variables should be marked for restore.
+    scope: Optional scope for variable_scope.
+    reuse: whether or not the layer and its variables should be reused. To be
+      able to reuse the layer scope must be given.
+  Returns:
+    a tensor representing the output of the operation.
 
-def _relu(inputs, leakiness=0.333):
+  """
+  # Reuse by default if scope is provided
+  if scope is not None and reuse is None:
+    reuse = True
+  
+  with tf.variable_scope(scope, 'residual_block', [inputs], reuse=reuse):
+    x_orig = inputs
+	
+    # Convolution Layer 1
+    x = _batch_norm(inputs, scope='batchnorm1')
+	x = _relu(x, leakiness=0.0)
+	x = _conv(x, num_filters_out_1, kernel_size_1, stride_1, scope='conv1')
+	
+	# Convolution Layer 2
+	x = _batch_norm(x, scope='batchnorm2')
+	x = _reslu(x, leakiness=0.0)
+	x = _conv(x, num_filters_out_2, kernel_size_2, stride_2, scope='conv2')
+	
+	# Output: y = x + F(W, x)
+	outputs = tf.add(x_orig, x)
+  
+    return outputs
+
+def _batch_norm(inputs,
+               decay=0.999,
+               center=True,
+               scale=False,
+               epsilon=0.001,
+               moving_vars='moving_vars',
+               is_training=True,
+               trainable=True,
+               restore=True,
+               scope=None,
+               reuse=None):
+  """Adds a Batch Normalization layer.
+
+  Args:
+    inputs: a tensor of size [batch_size, height, width, channels]
+            or [batch_size, channels].
+    decay: decay for the moving average.
+    center: If True, subtract beta. If False, beta is not created and ignored.
+    scale: If True, multiply by gamma. If False, gamma is
+      not used. When the next layer is linear (also e.g. ReLU), this can be
+      disabled since the scaling can be done by the next layer.
+    epsilon: small float added to variance to avoid dividing by zero.
+    moving_vars: collection to store the moving_mean and moving_variance.
+    is_training: whether or not the model is in training mode.
+    trainable: whether or not the variables should be trainable or not.
+    restore: whether or not the variables should be marked for restore.
+    scope: Optional scope for variable_scope.
+    reuse: whether or not the layer and its variables should be reused. To be
+      able to reuse the layer scope must be given.
+
+  Returns:
+    a Tensor representing the output of the operation.
+  """
+  # Reuse by default if scope is provided
+  if scope is not None and reuse is None:
+    reuse = True
+	
+  inputs_shape = inputs.get_shape()
+  with tf.variable_scope(scope, 'batchnorm', [inputs], reuse=reuse):
+    axis = list(range(len(inputs_shape) - 1))
+    params_shape = inputs_shape[-1:]
+    # Allocate parameters for the beta and gamma of the normalization.
+    beta, gamma = None, None
+    if center:
+      beta = variables.variable('beta',
+                                params_shape,
+                                initializer=tf.zeros_initializer(),
+                                trainable=trainable,
+                                restore=restore)
+    if scale:
+      gamma = variables.variable('gamma',
+                                 params_shape,
+                                 initializer=tf.ones_initializer(),
+                                 trainable=trainable,
+                                 restore=restore)
+    # Create moving_mean and moving_variance add them to
+    # GraphKeys.MOVING_AVERAGE_VARIABLES collections.
+    moving_collections = [moving_vars, tf.GraphKeys.MOVING_AVERAGE_VARIABLES]
+    moving_mean = variables.variable('moving_mean',
+                                     params_shape,
+                                     initializer=tf.zeros_initializer(),
+                                     trainable=False,
+                                     restore=restore,
+                                     collections=moving_collections)
+    moving_variance = variables.variable('moving_variance',
+                                         params_shape,
+                                         initializer=tf.ones_initializer(),
+                                         trainable=False,
+                                         restore=restore,
+                                         collections=moving_collections)
+    if is_training:
+      # Calculate the moments based on the individual batch.
+      mean, variance = tf.nn.moments(inputs, axis)
+
+      update_moving_mean = moving_averages.assign_moving_average(
+          moving_mean, mean, decay)
+      tf.add_to_collection(UPDATE_OPS_COLLECTION, update_moving_mean)
+      update_moving_variance = moving_averages.assign_moving_average(
+          moving_variance, variance, decay)
+      tf.add_to_collection(UPDATE_OPS_COLLECTION, update_moving_variance)
+    else:
+      # Just use the moving_mean and moving_variance.
+      mean = moving_mean
+      variance = moving_variance
+    # Normalize the activations.
+    outputs = tf.nn.batch_normalization(
+        inputs, mean, variance, beta, gamma, epsilon)
+    outputs.set_shape(inputs.get_shape())
+    return outputs
+
+def _relu(inputs, leakiness=0.0):
   """Relu, with optional (default) leaky support"""
-  return tf.where(tf.less(inputs, 0.0), leakiness * inputs,
+  if leakiness == 0.0:
+    return tf.nn.relu(inputs, name='relu')
+  else:
+    return tf.where(tf.less(inputs, 0.0), leakiness * inputs,
                   inputs, name='leaky_relu')
   # Alternatively:
   # return tf.maximum(leakiness * input, input)
 
 # TODO: Change weight initializer and std_dev (see resnet_model from tf models)
-def _conv2d(inputs,
+def _conv(inputs,
            num_filters_out,
            kernel_size,
            stride=1,
@@ -132,6 +335,7 @@ def _conv2d(inputs,
            stddev=0.01,
            is_training=True,
            trainable=True,
+		   restore=True,
            scope=None,
            reuse=None):
   """Adds a 2D convolution followed by an optional batch_norm layer.
@@ -163,7 +367,7 @@ def _conv2d(inputs,
   if scope is not None and reuse is None:
     reuse = True
 
-  with tf.variable_scope(scope, 'Conv', [inputs], reuse=reuse):
+  with tf.variable_scope(scope, 'conv', [inputs], reuse=reuse):
     num_filters_in = inputs.get_shape()[-1]
     weights_shape = [kernel_size, kernel_size,
                      num_filters_in, num_filters_out]
@@ -178,3 +382,8 @@ def _conv2d(inputs,
     # Add convolution to graph -- y_int = (w*x)
     return = tf.nn.conv2d(inputs, weights, [1, stride, stride, 1],
                         padding=padding)
+
+def _avg_pool(inputs, filter_size, name='avg_pool'):
+  """ Average Pooling Layer """
+  return tf.nn.avg_pool(inputs, ksize=[1, filter_size, filter_size, 1], 
+                        strides=[1, 1, 1, 1], name=name)
