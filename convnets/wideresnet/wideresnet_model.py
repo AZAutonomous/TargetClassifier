@@ -76,71 +76,86 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
     block1 = _residual(inputs, 
               16, 3, 1,
 			  160, 3, 1,
+              is_training=for_training, restore=restore_logits,
               scope='residual_block1')
 	# Block 2:  (32x32x160) -> (32x32x160) -> (32x32x160)
     block2 = _residual(inputs, 
               160, 3, 1,
 			  160, 3, 1,
+              is_training=for_training, restore=restore_logits,
               scope='residual_block2')
 	# Block 3:  (32x32x160) -> (32x32x160) -> (32x32x160)
     block3 = _residual(inputs, 
               160, 3, 1,
 			  160, 3, 1,
+              is_training=for_training, restore=restore_logits,
               scope='residual_block3')
 	# Block 4:  (32x32x160) -> (32x32x160) -> (32x32x160)
     block4 = _residual(inputs, 
               160, 3, 1,
 			  160, 3, 1,
+              is_training=for_training, restore=restore_logits,
               scope='residual_block4')
 	# Block 5:  (32x32x160) -> (32x32x160) -> (32x32x160)
     block5 = _residual(inputs, 
               160, 3, 1,
 			  160, 3, 1,
+              is_training=for_training, restore=restore_logits,
               scope='residual_block5')
 	# Block 6:  (32x32x320) -> (16x16x320) -> (16x16x320)
     block6 = _residual(inputs, 
               320, 3, 1,
 			  320, 3, 1,
+              is_training=for_training, restore=restore_logits,
               scope='residual_block6')
 	# Block 7:  (32x32x320) -> (16x16x320) -> (16x16x320)
     block7 = _residual(inputs, 
               320, 3, 1,
 			  320, 3, 1,
+              is_training=for_training, restore=restore_logits,
               scope='residual_block7')
 	# Block 8:  (16x16x320) -> (16x16x320) -> (16x16x320)
     block8 = _residual(inputs, 
               320, 3, 1,
 			  320, 3, 1,
+              is_training=for_training, restore=restore_logits,
               scope='residual_block8')
 	# Block 9:  (16x16x320) -> (16x16x320) -> (16x16x320)
     block9 = _residual(inputs, 
               320, 3, 1,
 			  320, 3, 1,
+              is_training=for_training, restore=restore_logits,
               scope='residual_block9')
 	# Block 10: (16x16x320) -> (16x16x320) -> (8x8x640)
     block10 = _residual(inputs, 
               320, 3, 1,
-			  640, 3, 1,0')
+			  640, 3, 1,
+              is_training=for_training, restore=restore_logits,
+			  scope='residual_block10')
 	# Block 11: (8x8x640)   -> (8x8x640)   -> (8x8x640)
     block11 = _residual(inputs, 
               640, 3, 1,
 			  640, 3, 1,
+              is_training=for_training, restore=restore_logits,
               scope='residual_block11')
 	# Block 12: (8x8x640)   -> (8x8x640)   -> (8x8x640)
     block12 = _residual(inputs, 
               640, 3, 1,
 			  640, 3, 1,
+              is_training=for_training, restore=restore_logits,
               scope='residual_block12')
 	# Block 13: (8x8x640)   -> (8x8x640)   -> (8x8x640)
     block13 = _residual(inputs, 
               640, 3, 1,
 			  640, 3, 1,
+              is_training=for_training, restore=restore_logits,
               scope='residual_block13')
 	# Block 14: (8x8x640)   -> (8x8x640)   -> (8x8x640)
     block14 = _residual(inputs, 
               640, 3, 1,
 			  640, 3, 1,
-              scope='residual_block14')
+              is_training=for_training, restore=restore_logits,
+			  scope='residual_block14')
 	
 	# Average Pool: (8x8x640) -> (1x1x640) # TODO: Check architecture??
 	pool = _avg_pool(block14, filter_size=8)
@@ -148,11 +163,19 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
 	# Fully connected: (1x1x640) -> (1x1xNUM_CLASSES)
     logits = _conv(pool1, num_classes, 1, is_training=for_training,
 	               restore=restore_logits, scope='fc1')
+				   
+	# Optionally softmax for predictions, but NOT for training
+	# since the loss function internally runs softmax!
+	predictions = tf.nn.softmax(logits, name='softmax')
+	if for_training:
+	  output = logits
+	else:
+	  output = predictions
 	
-	return logits
+	return output
   
 # TODO: This whole function
-def loss(logits, labels, batch_size=None):
+def loss(logits, labels, batch_size=None, scope=None):
   """Adds all losses for the model.
 
   Args:
@@ -164,20 +187,35 @@ def loss(logits, labels, batch_size=None):
   Returns:
     loss
   """
+  if not batch_size:
+    batch_size = FLAGS.batch_size
+
+  # Convert labels to one-hot encoding
+  num_classes = logits[0].get_shape()[-1].value
+  one_hot = tf.one_hot(labels, num_classes)
+  logits.get_shape().assert_is_compatible_with(one_hot_labels.get_shape())
   
-  # Reshape labels into dense Tensor, e.g.
-  # [0, 5, 3, 4] (batch of 4)
-  #      ||
-  #      \/
-  # [1 0 0 0 0 0 0 0 0 0]
-  # [0 0 0 0 0 1 0 0 0 0]
-  # [1 0 0 1 0 0 0 0 0 0]
-  # [1 0 0 0 1 0 0 0 0 0]
-  
-  # Calculate cross entropy loss
-  # NOTE: Decay?
-  
-  # Calculate cross entropy loss of auxiliary softmax? (wth is this?)
+  with tf.variable_scope(scope, 'cross_entropy_loss', [logits, one_hot]):
+    # NOTE: Consider label smoothing (S7, https://arxiv.org/pdf/1512.00567.pdf)
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
+	                      logits=logits, labels=one_hot, name='xentropy')
+	loss = tf.reduce_mean(cross_entropy, name='avg_xentropy')
+	
+	# TODO: Calculate cross entropy loss of auxiliary softmax? (wth is this?)
+
+	# Compute the total loss
+	regularization_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+    total_loss = tf.add_n(loss + regularization_loss, name='total_loss')
+	tf.summary.scalar('total_loss', total_loss)
+	
+	# Compute the moving average of all individual losses and the total loss.
+    loss_average = tf.train.ExponentialMovingAverage(0.999, name='moving_avg_xentropy')
+    loss_average_op = loss_averages.apply([loss, total_loss])
+	
+	# Return total loss
+	with tf.control_dependencies([loss_average_op]):
+	  total_loss = tf.identity(total_loss)
+	return total_loss
   
 # Submodules
 def _residual(inputs, 
@@ -373,7 +411,7 @@ def _conv(inputs,
                      num_filters_in, num_filters_out]
     weights_initializer = tf.truncated_normal_initializer(stddev=stddev)
 
-    l2_regularizer = losses.l2_regularizer(WEIGHT_DECAY)
+    l2_regularizer = _l2_regularizer(WEIGHT_DECAY) # TODO: Regularizer weight?
     
     weights = tf.get_variable('weights', shape=weights_shape,
                               dtype=tf.float32, initializer=weights_initializer,
@@ -385,5 +423,26 @@ def _conv(inputs,
 
 def _avg_pool(inputs, filter_size, name='avg_pool'):
   """ Average Pooling Layer """
-  return tf.nn.avg_pool(inputs, ksize=[1, filter_size, filter_size, 1], 
-                        strides=[1, 1, 1, 1], name=name)
+  pool = tf.nn.avg_pool(inputs, ksize=[1, filter_size, filter_size, 1], 
+                        strides=[1, 1, 1, 1], name=name)		
+  return pool
+
+  
+# Utility functions
+def _l2_regularizer(weight=1.0, scope=None):
+  """Define a L2 regularizer.
+
+  Args:
+    weight: scale the loss by this factor.
+    scope: Optional scope for name_scope.
+
+  Returns:
+    a regularizer function.
+  """
+  def regularizer(tensor):
+    with tf.name_scope(scope, 'L2Regularizer', [tensor]):
+      l2_weight = tf.convert_to_tensor(weight,
+                                       dtype=tensor.dtype.base_dtype,
+                                       name='weight')
+      return tf.multiply(l2_weight, tf.nn.l2_loss(tensor), name='value')
+  return regularizer
