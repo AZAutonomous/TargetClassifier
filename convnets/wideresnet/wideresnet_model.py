@@ -1,4 +1,3 @@
-
 # File: wideresnet_model.py
 # Author: Arizona Autonomous
 # Description: This contains the base WideResNet model, originally
@@ -30,13 +29,8 @@ tf.app.flags.DEFINE_string('data_dir', '/tmp/cifar10_data',
 tf.app.flags.DEFINE_boolean('use_fp16', False,
                             """Train the model using fp16.""")
 
-# Global constants describing dataset
-# TODO
-
 # Constants describing the training process
-# MOVING_AVERAGE_DECAY = 0.9999
-MOMENTUM = 0.9
-MOMENTUM_TYPE = 'Nesterov'
+MOVING_AVERAGE_DECAY = 0.9999
 MINIBATCH_SIZE = 128
 DAMPENING_RATIO = 0
 NUM_EPOCHS_PER_DECAY = 60
@@ -46,8 +40,8 @@ WEIGHT_DECAY = 0.0005
 
 # Other global flags
 VARIABLES_TO_RESTORE = '_variables_to_restore_'
+UPDATE_OPS_COLLECTION = '_update_ops_'
 
-# TODO: This whole function
 def inference(images, num_classes, for_training=False, restore_logits=True,
               scope=None):
   """Build WRN-28-10 model
@@ -71,93 +65,93 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
   # Set hyperparameters (optional, may hardcode)
   
   # Build graph
-  with tf.variable_scope(scope, 'WideResNet', [inputs], reuse=True)
+  with tf.variable_scope(scope, 'WideResNet', [inputs])
     # Block 1:  (32x32x3)   -> (32x32x16)  -> (32x32x160)
     block1 = _residual(inputs, 
               16, 3, 1,
 			  160, 3, 1,
-              is_training=for_training, restore=restore_logits,
+              is_training=for_training,
               scope='residual_block1')
 	# Block 2:  (32x32x160) -> (32x32x160) -> (32x32x160)
     block2 = _residual(inputs, 
               160, 3, 1,
 			  160, 3, 1,
-              is_training=for_training, restore=restore_logits,
+              is_training=for_training,
               scope='residual_block2')
 	# Block 3:  (32x32x160) -> (32x32x160) -> (32x32x160)
     block3 = _residual(inputs, 
               160, 3, 1,
 			  160, 3, 1,
-              is_training=for_training, restore=restore_logits,
+              is_training=for_training,
               scope='residual_block3')
 	# Block 4:  (32x32x160) -> (32x32x160) -> (32x32x160)
     block4 = _residual(inputs, 
               160, 3, 1,
 			  160, 3, 1,
-              is_training=for_training, restore=restore_logits,
+              is_training=for_training,
               scope='residual_block4')
 	# Block 5:  (32x32x160) -> (32x32x160) -> (32x32x160)
     block5 = _residual(inputs, 
               160, 3, 1,
 			  160, 3, 1,
-              is_training=for_training, restore=restore_logits,
+              is_training=for_training,
               scope='residual_block5')
 	# Block 6:  (32x32x320) -> (16x16x320) -> (16x16x320)
     block6 = _residual(inputs, 
               320, 3, 1,
 			  320, 3, 1,
-              is_training=for_training, restore=restore_logits,
+              is_training=for_training,
               scope='residual_block6')
 	# Block 7:  (32x32x320) -> (16x16x320) -> (16x16x320)
     block7 = _residual(inputs, 
               320, 3, 1,
 			  320, 3, 1,
-              is_training=for_training, restore=restore_logits,
+              is_training=for_training,
               scope='residual_block7')
 	# Block 8:  (16x16x320) -> (16x16x320) -> (16x16x320)
     block8 = _residual(inputs, 
               320, 3, 1,
 			  320, 3, 1,
-              is_training=for_training, restore=restore_logits,
+              is_training=for_training,
               scope='residual_block8')
 	# Block 9:  (16x16x320) -> (16x16x320) -> (16x16x320)
     block9 = _residual(inputs, 
               320, 3, 1,
 			  320, 3, 1,
-              is_training=for_training, restore=restore_logits,
+              is_training=for_training,
               scope='residual_block9')
 	# Block 10: (16x16x320) -> (16x16x320) -> (8x8x640)
     block10 = _residual(inputs, 
               320, 3, 1,
 			  640, 3, 1,
-              is_training=for_training, restore=restore_logits,
+              is_training=for_training,
 			  scope='residual_block10')
 	# Block 11: (8x8x640)   -> (8x8x640)   -> (8x8x640)
     block11 = _residual(inputs, 
               640, 3, 1,
 			  640, 3, 1,
-              is_training=for_training, restore=restore_logits,
+              is_training=for_training,
               scope='residual_block11')
 	# Block 12: (8x8x640)   -> (8x8x640)   -> (8x8x640)
     block12 = _residual(inputs, 
               640, 3, 1,
 			  640, 3, 1,
-              is_training=for_training, restore=restore_logits,
+              is_training=for_training,
               scope='residual_block12')
 	# Block 13: (8x8x640)   -> (8x8x640)   -> (8x8x640)
     block13 = _residual(inputs, 
               640, 3, 1,
 			  640, 3, 1,
-              is_training=for_training, restore=restore_logits,
+              is_training=for_training,
               scope='residual_block13')
 	# Block 14: (8x8x640)   -> (8x8x640)   -> (8x8x640)
     block14 = _residual(inputs, 
               640, 3, 1,
 			  640, 3, 1,
-              is_training=for_training, restore=restore_logits,
+              is_training=for_training,
 			  scope='residual_block14')
 	
-	# Average Pool: (8x8x640) -> (1x1x640) # TODO: Check architecture??
+	# Average Pool: (8x8x640) -> (1x1x640)
 	pool = _avg_pool(block14, filter_size=8)
 	
 	# Fully connected: (1x1x640) -> (1x1xNUM_CLASSES)
@@ -174,7 +168,6 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
 	
 	return output
   
-# TODO: This whole function
 def loss(logits, labels, batch_size=None, scope=None):
   """Adds all losses for the model.
 
@@ -242,22 +235,20 @@ def _residual(inputs,
     a tensor representing the output of the operation.
 
   """
-  # Reuse by default if scope is provided
-  if scope is not None and reuse is None:
-    reuse = True
-  
   with tf.variable_scope(scope, 'residual_block', [inputs], reuse=reuse):
     x_orig = inputs
 	
     # Convolution Layer 1
-    x = _batch_norm(inputs, scope='batchnorm1')
+    x = _batch_norm(inputs, scope='batchnorm1', restore=restore)
 	x = _relu(x, leakiness=0.0)
-	x = _conv(x, num_filters_out_1, kernel_size_1, stride_1, scope='conv1')
+	x = _conv(x, num_filters_out_1, kernel_size_1, stride_1,
+	          scope='conv1', restore=restore)
 	
 	# Convolution Layer 2
 	x = _batch_norm(x, scope='batchnorm2')
 	x = _reslu(x, leakiness=0.0)
-	x = _conv(x, num_filters_out_2, kernel_size_2, stride_2, scope='conv2')
+	x = _conv(x, num_filters_out_2, kernel_size_2, stride_2,
+	          scope='conv2', restore=restore)
 	
 	# Output: y = x + F(W, x)
 	outputs = tf.add(x_orig, x)
@@ -297,43 +288,43 @@ def _batch_norm(inputs,
   Returns:
     a Tensor representing the output of the operation.
   """
-  # Reuse by default if scope is provided
-  if scope is not None and reuse is None:
-    reuse = True
-	
   inputs_shape = inputs.get_shape()
   with tf.variable_scope(scope, 'batchnorm', [inputs], reuse=reuse):
     axis = list(range(len(inputs_shape) - 1))
     params_shape = inputs_shape[-1:]
     # Allocate parameters for the beta and gamma of the normalization.
     beta, gamma = None, None
+	
+	# Manage collections
+	collections = [tf.GraphKeys.GLOBAL_VARIABLES]
+	if restore:
+	  collections.append(VARIABLES_TO_RESTORE)
+	  
     if center:
-      beta = variables.variable('beta',
-                                params_shape,
-                                initializer=tf.zeros_initializer(),
-                                trainable=trainable,
-                                restore=restore)
+      beta = tf.get_variable('beta',
+	                         shape=params_shape, dtype=tf.float32
+	                         initializer=tf.zeros_initializer(),
+							 trainable=trainable, collections=collections)
     if scale:
-      gamma = variables.variable('gamma',
-                                 params_shape,
-                                 initializer=tf.ones_initializer(),
-                                 trainable=trainable,
-                                 restore=restore)
+      gamma = tf.get_variable('gamma',
+	                          shape=params_shape, dtype=tf.float32
+	                          initializer=tf.zeros_initializer(),
+							  trainable=trainable, collections=collections)
     # Create moving_mean and moving_variance add them to
     # GraphKeys.MOVING_AVERAGE_VARIABLES collections.
     moving_collections = [moving_vars, tf.GraphKeys.MOVING_AVERAGE_VARIABLES]
-    moving_mean = variables.variable('moving_mean',
-                                     params_shape,
-                                     initializer=tf.zeros_initializer(),
-                                     trainable=False,
-                                     restore=restore,
-                                     collections=moving_collections)
-    moving_variance = variables.variable('moving_variance',
-                                         params_shape,
-                                         initializer=tf.ones_initializer(),
-                                         trainable=False,
-                                         restore=restore,
-                                         collections=moving_collections)
+	if restore:
+	  moving_collections.append(VARIABLES_TO_RESTORE)
+    moving_mean = tf.get_variable('moving_mean',
+	                              shape=params_shape, dtype=tf.float32
+	                              initializer=tf.zeros_initializer(),
+							      trainable=False,
+								  collections=moving_collections)
+    moving_variance = tf_get_variable('moving_variance',
+	                                  shape=params_shape, dtype=tf.float32
+	                                  initializer=tf.ones_initializer(),
+							          trainable=False,
+								      collections=moving_collections)
     if is_training:
       # Calculate the moments based on the individual batch.
       mean, variance = tf.nn.moments(inputs, axis)
@@ -401,22 +392,21 @@ def _conv(inputs,
     a tensor representing the output of the operation.
 
   """
-  # Reuse by default if scope is provided
-  if scope is not None and reuse is None:
-    reuse = True
-
   with tf.variable_scope(scope, 'conv', [inputs], reuse=reuse):
     num_filters_in = inputs.get_shape()[-1]
     weights_shape = [kernel_size, kernel_size,
                      num_filters_in, num_filters_out]
     weights_initializer = tf.truncated_normal_initializer(stddev=stddev)
-
-    l2_regularizer = _l2_regularizer(WEIGHT_DECAY) # TODO: Regularizer weight?
+    l2_regularizer = _l2_regularizer(WEIGHT_DECAY)
+	
+	collections = [tf.GraphKeys.GLOBAL_VARIABLES]
+	if restore:
+      collections.append(VARIABLES_TO_RESTORE)
     
     weights = tf.get_variable('weights', shape=weights_shape,
                               dtype=tf.float32, initializer=weights_initializer,
                               regularizer=l2_regularizer, trainable=trainable,
-                              collections=[tf.GraphKeys.GLOBAL_VARIABLES]) # TODO -- what are collections?
+                              collections=collections)
     # Add convolution to graph -- y_int = (w*x)
     return = tf.nn.conv2d(inputs, weights, [1, stride, stride, 1],
                         padding=padding)
