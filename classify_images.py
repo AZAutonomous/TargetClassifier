@@ -22,6 +22,17 @@ parser.add_argument('-d', '--dir', help='Directory to scan for images. If no dir
 args = parser.parse_args()
 
 # TODO
+def preprocess_image(image):
+  ''' Preprocess image for classification
+      Args:
+	    image: np.array of size [width, height, depth]
+      Returns:
+	    image: np.array of size [width, height, depth]
+  '''
+  # TODO: meanstd normalization
+  pass
+
+# TODO
 def build_graphs():
   ''' Build the TensorFlow graphs as needed
   '''
