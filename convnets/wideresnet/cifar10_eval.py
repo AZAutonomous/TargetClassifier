@@ -41,7 +41,8 @@ import time
 import numpy as np
 import tensorflow as tf
 
-import cifar10
+import wideresnet_model as wideresnet
+import cifar10_input as input
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -118,18 +119,18 @@ def evaluate():
   with tf.Graph().as_default() as g:
     # Get images and labels for CIFAR-10.
     eval_data = FLAGS.eval_data == 'test'
-    images, labels = cifar10.inputs(eval_data=eval_data)
+    images, labels = input.inputs(eval_data=eval_data)
 
     # Build a Graph that computes the logits predictions from the
     # inference model.
-    logits = cifar10.inference(images)
+    logits = wideresnet.inference(images)
 
     # Calculate predictions.
     top_k_op = tf.nn.in_top_k(logits, labels, 1)
 
     # Restore the moving average version of the learned variables for eval.
     variable_averages = tf.train.ExponentialMovingAverage(
-        cifar10.MOVING_AVERAGE_DECAY)
+        wideresnet.MOVING_AVERAGE_DECAY)
     variables_to_restore = variable_averages.variables_to_restore()
     saver = tf.train.Saver(variables_to_restore)
 
@@ -144,9 +145,28 @@ def evaluate():
         break
       time.sleep(FLAGS.eval_interval_secs)
 
-
+def maybe_download_and_extract():
+  """Download and extract the tarball from Alex's website."""
+  dest_directory = FLAGS.data_dir
+  if not os.path.exists(dest_directory):
+    os.makedirs(dest_directory)
+  filename = DATA_URL.split('/')[-1]
+  filepath = os.path.join(dest_directory, filename)
+  if not os.path.exists(filepath):
+    def _progress(count, block_size, total_size):
+      sys.stdout.write('\r>> Downloading %s %.1f%%' % (filename,
+          float(count * block_size) / float(total_size) * 100.0))
+      sys.stdout.flush()
+    filepath, _ = urllib.request.urlretrieve(DATA_URL, filepath, _progress)
+    print()
+    statinfo = os.stat(filepath)
+    print('Successfully downloaded', filename, statinfo.st_size, 'bytes.')
+  extracted_dir_path = os.path.join(dest_directory, 'cifar-10-batches-bin')
+  if not os.path.exists(extracted_dir_path):
+    tarfile.open(filepath, 'r:gz').extractall(dest_directory)
+	
 def main(argv=None):  # pylint: disable=unused-argument
-  cifar10.maybe_download_and_extract()
+  maybe_download_and_extract()
   if tf.gfile.Exists(FLAGS.eval_dir):
     tf.gfile.DeleteRecursively(FLAGS.eval_dir)
   tf.gfile.MakeDirs(FLAGS.eval_dir)

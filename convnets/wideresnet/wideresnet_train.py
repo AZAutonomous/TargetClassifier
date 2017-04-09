@@ -18,8 +18,9 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from wideresnet import image_processing
-from wideresnet import wideresnet_model as wideresnet
+#import image_processing
+import wideresnet_model as wideresnet
+import cifar10_input as input # DELETEME/TODO
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -71,9 +72,11 @@ def train(dataset, scope=None):
         initializer=tf.constant_initializer(0), trainable=False)
 
     # Calculate the learning rate schedule. TODO: Adjust schedule
-    num_batches_per_epoch = (dataset.num_examples_per_epoch() /
-                             FLAGS.batch_size)
-    decay_steps = int(num_batches_per_epoch * FLAGS.num_epochs_per_decay).
+    # FIXME: TEMP, use hardcoded CIFAR-10 stats
+    num_batches_per_epoch = (60000 / FLAGS.batch_size)
+    #num_batches_per_epoch = (dataset.num_examples_per_epoch() /
+    #                         FLAGS.batch_size)
+    decay_steps = int(num_batches_per_epoch * FLAGS.num_epochs_per_decay)
     lr = tf.train.exponential_decay(FLAGS.initial_learning_rate,
                                     global_step,
                                     decay_steps,
@@ -81,37 +84,41 @@ def train(dataset, scope=None):
                                     staircase=True)
 
     # Create an optimizer that performs gradient descent.
-	opt = tf.train.MomentumOptimizer(lr, momentum=NESTEROV_MOMENTUM,
-	                                 use_nesterov=True)
+    opt = tf.train.MomentumOptimizer(lr, momentum=NESTEROV_MOMENTUM,
+                                     use_nesterov=True)
 
     # TODO: Load images
-	num_preprocess_threads=FLAGS.num_preprocess_threads
-    images, labels = image_processing.distorted_inputs(
-        dataset,
-        num_preprocess_threads=num_preprocess_threads)
+    # num_preprocess_threads=FLAGS.num_preprocess_threads
+    # FIXME: TEMP, use hardcoded CIFAR-10 inputs
+    images, labels = input.distorted_inputs()
+    #images, labels = image_processing.distorted_inputs(
+    #    dataset,
+    #    num_preprocess_threads=num_preprocess_threads)
 
     input_summaries = copy.copy(tf.get_collection(tf.GraphKeys.SUMMARIES))
 
     # Number of classes in the Dataset label.
-    num_classes = dataset.num_classes()
-	
-	# When fine-tuning model, do not restore logits and randomly initialize
-	restore_logits = not FLAGS.fine_tune
+    # FIXME: TEMP, use hardcoded number of classes for CIFAR-10
+    num_classes = 10
+    #num_classes = dataset.num_classes()
+    
+    # When fine-tuning model, do not restore logits and randomly initialize
+    restore_logits = not FLAGS.fine_tune
 
     # Calculate the gradients for each model tower.
-	with tf.device('gpu:0'):
-	  with tf.variable_scope(tf.get_variable_scope()):
-	    logits = wideresnet.inference(images, num_classes, for_training=True,
-		                              restore_logits=restore_logits, scope=scope)
-	    loss = wideresnet.loss(logits, labels, batch_size=FLAGS.batch_size, scope=scope)
+    with tf.device('gpu:0'):
+      with tf.variable_scope(tf.get_variable_scope()):
+        logits = wideresnet.inference(images, num_classes, for_training=True,
+                                      restore_logits=restore_logits, scope=scope)
+        loss = wideresnet.loss(logits, labels, batch_size=FLAGS.batch_size, scope=scope)
 
         # Retain the Batch Normalization updates operations.
         batchnorm_updates = tf.get_collection(wideresnet.UPDATE_OPS_COLLECTION,
                                                 scope)
-					
+                    
         # Calculate the gradients for the batch of data
         grads = opt.compute_gradients(loss)
-		
+        
     # Add a summary to track the learning rate.
     tf.summary.scalar('learning_rate', lr)
 
@@ -146,13 +153,13 @@ def train(dataset, scope=None):
     saver = tf.train.Saver(tf.global_variables())
 
     # Build the summary operation.
-	summary_op = tf.summary.merge_all()
+    summary_op = tf.summary.merge_all()
 
     # Build an initialization operation to run below.
     init = tf.global_variables_initializer()
 
     # Start running operations on the Graph. allow_soft_placement allows
-	# support for ops without GPU support
+    # support for ops without GPU support
     sess = tf.Session(config=tf.ConfigProto(
         allow_soft_placement=True,
         log_device_placement=FLAGS.log_device_placement))

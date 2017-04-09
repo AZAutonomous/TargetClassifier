@@ -27,13 +27,17 @@ import tensorflow as tf
 # Process images of this size. Note that this differs from the original CIFAR
 # image size of 32 x 32. If one alters this number, then the entire model
 # architecture will change and any model would need to be retrained.
-IMAGE_SIZE = 24
+IMAGE_SIZE = 32
 
 # Global constants describing the CIFAR-10 data set.
 NUM_CLASSES = 10
 NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 50000
 NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 10000
+# From fb.resnet.torch
+MEAN = [125.3, 123.0, 113.9]
+STD = [63.0, 62.1, 66.7]
 
+FLAGS = tf.app.flags.FLAGS
 
 def read_cifar10(filename_queue):
   """Reads and parses examples from CIFAR10 data files.
@@ -136,8 +140,35 @@ def _generate_image_and_label_batch(image, label, min_queue_examples,
 
   return images, tf.reshape(label_batch, [batch_size])
 
+def mean_std(image, meanstd, scope=None):
+  """Perform mean-std normalization on images
 
-def distorted_inputs(data_dir, batch_size):
+  Args:
+    images: 3-D Tensor containing all images from a dataset.
+    meanstd: 2-D array containing mean and std dev in format
+             [[r_mean, g_mean, b_mean],
+             [r_std, g_std, b_std]]
+    scope: Optional scope for name_scope.
+  Returns:
+    a 3-D Tensor containing meanstd normalized images
+  """
+  # Calculate meanstd
+  mean = tf.constant(meanstd[0], tf.float32)
+  stddev = tf.constant(meanstd[1], tf.float32)
+  
+  # Perform normalization
+  meansub = tf.subtract(image, mean)
+  normalized = tf.divide(meansub, stddev)
+  
+  return normalized
+ 
+def distorted_inputs():                         
+  if not FLAGS.data_dir:
+    raise ValueError('Please supply a data_dir')
+  data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin')
+  batch_size=FLAGS.batch_size
+#TODO/FIXME: Remove this jankiness
+#def distorted_inputs(data_dir, batch_size):
   """Construct distorted input for CIFAR training using the Reader ops.
 
   Args:
@@ -164,27 +195,23 @@ def distorted_inputs(data_dir, batch_size):
   height = IMAGE_SIZE
   width = IMAGE_SIZE
 
-  # Image processing for training the network. Note the many random
-  # distortions applied to the image.
-
-  # Randomly crop a [height, width] section of the image.
-  distorted_image = tf.random_crop(reshaped_image, [height, width, 3])
-
-  # Randomly flip the image horizontally.
-  distorted_image = tf.image.random_flip_left_right(distorted_image)
-
-  # Because these operations are not commutative, consider randomizing
-  # the order their operation.
-  distorted_image = tf.image.random_brightness(distorted_image,
-                                               max_delta=63)
-  distorted_image = tf.image.random_contrast(distorted_image,
-                                             lower=0.2, upper=1.8)
-
-  # Subtract off the mean and divide by the variance of the pixels.
-  float_image = tf.image.per_image_standardization(distorted_image)
+  # Image processing for training the network.
+  # meanstd normalization against entire dataset
+  normalized = mean_std(reshaped_image, [MEAN, STD])
+  
+  # randomly horizontal flip
+  distorted_image = tf.image.random_flip_left_right(normalized)
+  
+  # zero pad by 4 pixels on all sides
+  distorted_image = tf.pad(distorted_image, 
+                           [[4,4], [4,4], [0,0]], "REFLECT")
+                        
+  # randomly crop back to 32x32
+  distorted_image = tf.random_crop(distorted_image,
+                        [IMAGE_SIZE, IMAGE_SIZE, 3])
 
   # Set the shapes of tensors.
-  float_image.set_shape([height, width, 3])
+  distorted_image.set_shape([height, width, 3])
   read_input.label.set_shape([1])
 
   # Ensure that the random shuffling has good mixing properties.
@@ -195,7 +222,7 @@ def distorted_inputs(data_dir, batch_size):
          'This will take a few minutes.' % min_queue_examples)
 
   # Generate a batch of images and labels by building up a queue of examples.
-  return _generate_image_and_label_batch(float_image, read_input.label,
+  return _generate_image_and_label_batch(distorted_image, read_input.label,
                                          min_queue_examples, batch_size,
                                          shuffle=True)
 
@@ -235,12 +262,8 @@ def inputs(eval_data, data_dir, batch_size):
   width = IMAGE_SIZE
 
   # Image processing for evaluation.
-  # Crop the central [height, width] of the image.
-  resized_image = tf.image.resize_image_with_crop_or_pad(reshaped_image,
-                                                         height, width)
-
-  # Subtract off the mean and divide by the variance of the pixels.
-  float_image = tf.image.per_image_standardization(resized_image)
+  # meanstd normalization against entire dataset
+  normalized = mean_std(reshaped_image, [MEAN, STD])
 
   # Set the shapes of tensors.
   float_image.set_shape([height, width, 3])
