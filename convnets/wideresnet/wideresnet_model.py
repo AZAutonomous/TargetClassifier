@@ -33,9 +33,6 @@ tf.app.flags.DEFINE_boolean('use_fp16', False,
 MOVING_AVERAGE_DECAY = 0.9999
 MINIBATCH_SIZE = 128
 DAMPENING_RATIO = 0
-NUM_EPOCHS_PER_DECAY = 60
-INITIAL_LEARNING_RATE = 0.1
-LEARNING_RATE_DECAY_FACTOR = 0.2
 WEIGHT_DECAY = 0.0005
 
 # Other global flags
@@ -66,93 +63,30 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
   
   # Build graph
   with tf.variable_scope(scope, 'WideResNet', [images]):
-    # Block 1:  (32x32x3)   -> (32x32x16)  -> (32x32x160)
-    block1 = _residual(images, 
-              16, 3, 1,
-              160, 3, 1,
-              is_training=for_training,
-              scope='residual_block1')
-    # Block 2:  (32x32x160) -> (32x32x160) -> (32x32x160)
-    block2 = _residual(block1, 
-              160, 3, 1,
-              160, 3, 1,
-              is_training=for_training,
-              scope='residual_block2')
-    # Block 3:  (32x32x160) -> (32x32x160) -> (32x32x160)
-    block3 = _residual(block2, 
-              160, 3, 1,
-              160, 3, 1,
-              is_training=for_training,
-              scope='residual_block3')
-    # Block 4:  (32x32x160) -> (32x32x160) -> (32x32x160)
-    block4 = _residual(block3, 
-              160, 3, 1,
-              160, 3, 1,
-              is_training=for_training,
-              scope='residual_block4')
-    # Block 5:  (32x32x160) -> (32x32x160) -> (32x32x160)
-    block5 = _residual(block4, 
-              160, 3, 1,
-              160, 3, 1,
-              is_training=for_training,
-              scope='residual_block5')
-    # Block 6:  (32x32x320) -> (16x16x320) -> (16x16x320)
-    block6 = _residual(block5, 
-              320, 3, 2,
-              320, 3, 1,
-              is_training=for_training,
-              scope='residual_block6')
-    # Block 7:  (16x16x320) -> (16x16x320) -> (16x16x320)
-    block7 = _residual(block6, 
-              320, 3, 1,
-              320, 3, 1,
-              is_training=for_training,
-              scope='residual_block7')
-    # Block 8:  (16x16x320) -> (16x16x320) -> (16x16x320)
-    block8 = _residual(block7, 
-              320, 3, 1,
-              320, 3, 1,
-              is_training=for_training,
-              scope='residual_block8')
-    # Block 9:  (16x16x320) -> (16x16x320) -> (16x16x320)
-    block9 = _residual(block8, 
-              320, 3, 1,
-              320, 3, 1,
-              is_training=for_training,
-              scope='residual_block9')
-    # Block 10: (16x16x320) -> (16x16x320) -> (8x8x640)
-    block10 = _residual(block9, 
-              320, 3, 1,
-              640, 3, 2,
-              is_training=for_training,
-              scope='residual_block10')
-    # Block 11: (8x8x640)   -> (8x8x640)   -> (8x8x640)
-    block11 = _residual(block10, 
-              640, 3, 1,
-              640, 3, 1,
-              is_training=for_training,
-              scope='residual_block11')
-    # Block 12: (8x8x640)   -> (8x8x640)   -> (8x8x640)
-    block12 = _residual(block11, 
-              640, 3, 1,
-              640, 3, 1,
-              is_training=for_training,
-              scope='residual_block12')
-    # Block 13: (8x8x640)   -> (8x8x640)   -> (8x8x640)
-    block13 = _residual(block12, 
-              640, 3, 1,
-              640, 3, 1,
-              is_training=for_training,
-              scope='residual_block13')
-    # Block 14: (8x8x640)   -> (8x8x640)   -> (8x8x640)
-    block14 = _residual(block13, 
-              640, 3, 1,
-              640, 3, 1,
-              is_training=for_training,
-              scope='residual_block14')
+    # Block 1: (32x32x3)   -> (32x32x16)
+    block1 = _conv(images, 16, 3, 1, scope='block1')
+    _activation_summary(block1)
+
+    # Block 2: (32x32x16)  -> (32x32x160)
+    block2 = _residual_block(block1, 160, 3, 1, 4,
+                            is_training=for_training, scope='block2')
+    _activation_summary(block2)
+
+    # Block 3: (32x32x160) -> (16x16x320)
+    block3 = _residual_block(block2, 320, 3, 2, 4,
+                            is_training=for_training, scope='block3')
+    _activation_summary(block3)
+
+    # Block 4: (16x16x320) ->   (8x8x640)
+    block4 = _residual_block(block3, 640, 3, 2, 4,
+                            is_training=for_training, scope='block4')
+    _activation_summary(block4)
     
     # Average Pool: (8x8x640) -> (1x1x640)
-    pool = _avg_pool(block14, filter_size=8, stride=1)
+    with tf.variable_scope('avg_pool'):
+      x = _batch_norm(block4, scope='batchnorm1')
+      x = _relu(x, leakiness=0.0)
+      pool = _avg_pool(x, filter_size=8, stride=1)
     
     # Fully connected: (1x1x640) -> (1x1xNUM_CLASSES)
     logits = _conv(pool, num_classes, 1, is_training=for_training,
@@ -160,6 +94,7 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
                    
     # Flatten logits
     logits = tf.squeeze(logits)
+    _activation_summary(logits)
 
     # Optionally softmax for predictions, but NOT for training
     # since the loss function internally runs softmax!
@@ -214,6 +149,41 @@ def loss(logits, labels, batch_size=None, scope=None):
     return total_loss
   
 # Submodules
+def _residual_block(inputs, num_filters_out, kernel_size, stride, count,
+                    is_training=True, restore=True, scope=None, reuse=None):
+  """Residual unit block, consisting of count residual units
+  
+  Args:
+    inputs: a tensor of size [batch_size, height, width, channels].
+    num_filters_out: the number of output filters
+    kernel_size: an int representing the square filter size
+    stride: an int representing stride in both x and y for the first conv layer
+    count: an int representing the number of residual units to stack
+    is_training: whether or not the model is in training mode.
+    restore: whether or not the variables should be marked for restore.
+    scope: Optional scope for variable_scope.
+    reuse: whether or not the layer and its variables should be reused. To be
+      able to reuse the layer scope must be given.
+  Returns:
+    a tensor representing the output of the operation.
+
+  """
+  with tf.variable_scope(scope, 'residual_block', [inputs], reuse=reuse):
+    # Dimension reduce (striding) in first layer, if any
+    x  = _residual(inputs, 
+              num_filters_out, kernel_size, stride,
+              num_filters_out, kernel_size, 1,
+              is_training=is_training, restore=restore,
+              scope='residual_unit_1', reuse=reuse)
+    # Stack additional units
+    for i in xrange(2, count+1):
+      x = _residual(x,
+                    num_filters_out, kernel_size, 1,
+                    num_filters_out, kernel_size, 1,
+                    is_training=is_training, restore=restore,
+                    scope='residual_unit_%d' % i, reuse=reuse)
+    return x
+
 def _residual(inputs, 
               num_filters_out_1, kernel_size_1, stride_1,
               num_filters_out_2, kernel_size_2, stride_2,
@@ -229,7 +199,6 @@ def _residual(inputs,
     kernel_size_2: an int representing the square filter size for conv layer 2
     stride_2: an int representing stride in both x and y for conv layer 2
     is_training: whether or not the model is in training mode.
-    trainable: whether or not the variables should be trainable or not.
     restore: whether or not the variables should be marked for restore.
     scope: Optional scope for variable_scope.
     reuse: whether or not the layer and its variables should be reused. To be
@@ -238,23 +207,28 @@ def _residual(inputs,
     a tensor representing the output of the operation.
 
   """
-  with tf.variable_scope(scope, 'residual_block', [inputs], reuse=reuse):
+  with tf.variable_scope(scope, 'residual_unit', [inputs], reuse=reuse):
     x_orig = inputs
     
     # Convolution Layer 1
     x = _batch_norm(inputs, scope='batchnorm1', restore=restore)
     x = _relu(x, leakiness=0.0)
     x = _conv(x, num_filters_out_1, kernel_size_1, stride_1,
-              scope='conv1', restore=restore)
-    
+              scope='conv1', reuse=reuse, restore=restore)
+    _activation_summary(x)
+
+    # TODO: Dropout
+
     # Convolution Layer 2
     x = _batch_norm(x, scope='batchnorm2')
     x = _relu(x, leakiness=0.0)
     x = _conv(x, num_filters_out_2, kernel_size_2, stride_2,
-              scope='conv2', restore=restore)
+              scope='conv2', reuse=reuse, restore=restore)
+    _activation_summary(x)
    
     # TODO: Handle dimension reduction & depth changes!
-    # Reduce dimensions using strided avg_pool TODO: play with params
+    # TODO: Change shortcut to 1x1 convolutions
+    # Reduce dimensions using strided avg_pool
     reduction = stride_1 * stride_2
     x_orig = _avg_pool(x_orig, filter_size=reduction, stride=reduction)
     # Pad difference in depth with zeros
@@ -431,6 +405,22 @@ def _avg_pool(inputs, filter_size, stride, name='avg_pool'):
 
   
 # Utility functions
+def _activation_summary(x):
+  """Helper to create summaries for activations.
+
+  Creates a summary that provides a histogram of activations.
+  Creates a summary that measures the sparsity of activations.
+
+  Args:
+    x: Tensor
+  Returns:
+    nothing
+  """
+  tensor_name = x.op.name
+  tf.summary.histogram(tensor_name + '/activations', x)
+  tf.summary.scalar(tensor_name + '/sparsity',
+                                       tf.nn.zero_fraction(x))
+
 def _l2_regularizer(weight=1.0, scope=None):
   """Define a L2 regularizer.
 
