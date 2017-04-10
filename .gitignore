@@ -101,3 +101,6 @@ events.out.tfevents*
 *.bin
 *.html
 *.tar*
+
+# Vim autosave/swap files
+*.sw[a-p]
