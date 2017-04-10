@@ -54,9 +54,9 @@ tf.app.flags.DEFINE_string('pretrained_model_checkpoint_path', '',
 # empirical process that requires some experimentation.
 tf.app.flags.DEFINE_float('initial_learning_rate', 0.1,
                           """Initial learning rate.""")
-tf.app.flags.DEFINE_float('num_epochs_per_decay', 30.0,
+tf.app.flags.DEFINE_float('num_epochs_per_decay', 60.0,
                           """Epochs after which learning rate decays.""")
-tf.app.flags.DEFINE_float('learning_rate_decay_factor', 0.16,
+tf.app.flags.DEFINE_float('learning_rate_decay_factor', 0.2,
                           """Learning rate decay factor.""")
 
 # Constants for learning
@@ -83,6 +83,7 @@ def train(dataset, scope=None):
                                     FLAGS.learning_rate_decay_factor,
                                     staircase=True)
 
+
     # Create an optimizer that performs gradient descent.
     opt = tf.train.MomentumOptimizer(lr, momentum=NESTEROV_MOMENTUM,
                                      use_nesterov=True)
@@ -106,7 +107,7 @@ def train(dataset, scope=None):
     restore_logits = not FLAGS.fine_tune
 
     # Calculate the gradients for each model tower.
-    with tf.device('gpu:0'):
+    with tf.device('/gpu:0'):
       with tf.variable_scope(tf.get_variable_scope()):
         logits = wideresnet.inference(images, num_classes, for_training=True,
                                       restore_logits=restore_logits, scope=scope)
