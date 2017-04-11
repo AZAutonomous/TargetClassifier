@@ -38,11 +38,18 @@ from datetime import datetime
 import math
 import time
 
+# Imports for maybe_download_and_extract TODO: move out of this file :/
+import os
+import sys
+import tarfile
+from six.moves import urllib
+DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
+
 import numpy as np
 import tensorflow as tf
 
 import wideresnet_model as wideresnet
-import cifar10_input as input
+import cifar10_input
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -119,11 +126,11 @@ def evaluate():
   with tf.Graph().as_default() as g:
     # Get images and labels for CIFAR-10.
     eval_data = FLAGS.eval_data == 'test'
-    images, labels = input.inputs(eval_data=eval_data)
+    images, labels = cifar10_input.inputs(eval_data=eval_data)
 
     # Build a Graph that computes the logits predictions from the
     # inference model.
-    logits = wideresnet.inference(images)
+    logits = wideresnet.inference(images, 10)
 
     # Calculate predictions.
     top_k_op = tf.nn.in_top_k(logits, labels, 1)

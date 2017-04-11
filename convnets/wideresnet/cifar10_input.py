@@ -39,6 +39,8 @@ STD = [63.0, 62.1, 66.7]
 
 FLAGS = tf.app.flags.FLAGS
 
+DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
+
 def read_cifar10(filename_queue):
   """Reads and parses examples from CIFAR10 data files.
 
@@ -227,7 +229,13 @@ def distorted_inputs():
                                          shuffle=True)
 
 
-def inputs(eval_data, data_dir, batch_size):
+def inputs(eval_data):                         
+  if not FLAGS.data_dir:
+    raise ValueError('Please supply a data_dir')
+  data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin')
+  batch_size=FLAGS.batch_size
+#TODO/FIXME: Remove this jankiness
+#def inputs(eval_data, data_dir, batch_size):
   """Construct input for CIFAR evaluation using the Reader ops.
 
   Args:
@@ -266,7 +274,7 @@ def inputs(eval_data, data_dir, batch_size):
   normalized = mean_std(reshaped_image, [MEAN, STD])
 
   # Set the shapes of tensors.
-  float_image.set_shape([height, width, 3])
+  normalized.set_shape([height, width, 3])
   read_input.label.set_shape([1])
 
   # Ensure that the random shuffling has good mixing properties.
@@ -275,6 +283,6 @@ def inputs(eval_data, data_dir, batch_size):
                            min_fraction_of_examples_in_queue)
 
   # Generate a batch of images and labels by building up a queue of examples.
-  return _generate_image_and_label_batch(float_image, read_input.label,
+  return _generate_image_and_label_batch(normalized, read_input.label,
                                          min_queue_examples, batch_size,
                                          shuffle=False)

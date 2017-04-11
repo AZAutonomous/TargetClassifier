@@ -24,6 +24,7 @@ FLAGS = tf.app.flags.FLAGS
 # Basic model parameters
 tf.app.flags.DEFINE_integer('batch_size', 128, 
                             """Number of images to process in a batch.""")
+# TODO: Move this flag out of the model and into a dataset module
 tf.app.flags.DEFINE_string('data_dir', '/tmp/cifar10_data',
                            """Path to the data directory.""")
 tf.app.flags.DEFINE_boolean('use_fp16', False,
