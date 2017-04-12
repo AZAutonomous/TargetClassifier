@@ -299,15 +299,15 @@ def mean_std(image, meanstd, scope=None):
 	"""
 	with tf.name_scope(values=[images], name=scope,
 						default_name='calc_mean_std'):
-	# Calculate meanstd
-	mean = tf.constant(meanstd[0], tf.float32)
-	stddev = tf.constant(meanstd[1], tf.float32)
-	
-	# Perform normalization
-	meansub = tf.subtract(image, mean)
-	normalized = tf.divide(meansub, stddev)
-	
-	return normalized
+		# Calculate meanstd
+		mean = tf.constant(meanstd[0], tf.float32)
+		stddev = tf.constant(meanstd[1], tf.float32)
+		
+		# Perform normalization
+		meansub = tf.subtract(image, mean)
+		normalized = tf.divide(meansub, stddev)
+		
+		return normalized
 	
 	
 def preprocess_image(image, meanstd, train):
@@ -338,11 +338,11 @@ def preprocess_image(image, meanstd, train):
 														preprocessed_image,
 														image_size + 2 * 4,
 														image_size + 2 * 4)
-							
+
 		# randomly crop back to 32x32
 		preprocessed_image = tf.random_crop(preprocessed_image,
 												[image_size, image_size, 3])
-	
+
 	return preprocessed_image
 	
 def batch_inputs(dataset, batch_size, train, num_preprocess_threads=None,
@@ -435,28 +435,28 @@ def batch_inputs(dataset, batch_size, train, num_preprocess_threads=None,
 	image = preprocess_image(image, train)
 	
 	if train:
-			images, label_batch = tf.train.shuffle_batch(
+		images, label_batch = tf.train.shuffle_batch(
 							[image, label],
 							batch_size=batch_size,
 							num_threads=num_preprocess_threads,
 							capacity=min_queue_examples + 3 * batch_size,
 							min_after_dequeue=min_queue_examples)
-		else:
-			images, label_batch = tf.train.batch(
+	else:
+		images, label_batch = tf.train.batch(
 							[image, label],
 							batch_size=batch_size,
 							num_threads=num_preprocess_threads,
 							capacity=min_queue_examples + 3 * batch_size)
 
-		# Reshape images into these desired dimensions.
-		height = FLAGS.image_size
-		width = FLAGS.image_size
-		depth = 3
-
-		images = tf.cast(images, tf.float32)
-		images = tf.reshape(images, shape=[batch_size, height, width, depth])
-
-		# Display the training images in the visualizer.
-		tf.summary.image('images', images)
-
-		return images, tf.reshape(label_batch, [batch_size])
+	# Reshape images into these desired dimensions.
+	height = FLAGS.image_size
+	width = FLAGS.image_size
+	depth = 3
+	
+	images = tf.cast(images, tf.float32)
+	images = tf.reshape(images, shape=[batch_size, height, width, depth])
+	
+	# Display the training images in the visualizer.
+	tf.summary.image('images', images)
+	
+	return images, tf.reshape(label_batch, [batch_size])
