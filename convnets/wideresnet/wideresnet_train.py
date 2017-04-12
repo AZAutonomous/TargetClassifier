@@ -167,10 +167,10 @@ def train(dataset, scope=None):
     sess.run(init)
 
     if FLAGS.pretrained_model_checkpoint_path:
-      assert tf.gfile.Exists(FLAGS.pretrained_model_checkpoint_path)
+      # assert tf.gfile.Exists(FLAGS.pretrained_model_checkpoint_path)
       variables_to_restore = tf.get_collection(
           wideresnet.VARIABLES_TO_RESTORE)
-      restorer = tf.train.Saver(variables_to_restore)
+      restorer = tf.train.import_meta_graph(FLAGS.pretrained_model_checkpoint_path + '.meta')
       restorer.restore(sess, FLAGS.pretrained_model_checkpoint_path)
       print('%s: Pre-trained model restored from %s' %
             (datetime.now(), FLAGS.pretrained_model_checkpoint_path))
