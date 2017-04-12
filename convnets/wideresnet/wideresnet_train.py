@@ -1,7 +1,7 @@
 # File: wideresnet_train.py
 # Author: Arizona Autonomous
 # Description: This contains the trainer for the WideResNet model.
-#              All code has been simplified to use only 1 GPU
+#							All code has been simplified to use only 1 GPU
 
 """ Wide ResNet Trainer """
 
@@ -25,27 +25,27 @@ import cifar10_input as input # DELETEME/TODO
 FLAGS = tf.app.flags.FLAGS
 
 tf.app.flags.DEFINE_string('train_dir', '/tmp/imagenet_train',
-                           """Directory where to write event logs """
-                           """and checkpoint.""")
+							"""Directory where to write event logs """
+							"""and checkpoint.""")
 tf.app.flags.DEFINE_integer('max_steps', 10000000,
-                            """Number of batches to run.""")
+							"""Number of batches to run.""")
 tf.app.flags.DEFINE_string('subset', 'train',
-                           """Either 'train' or 'validation'.""")
+							"""Either 'train' or 'validation'.""")
 
 # Flags governing the hardware employed for running TensorFlow.
 tf.app.flags.DEFINE_integer('num_gpus', 1,
-                            """How many GPUs to use.""")
+							"""How many GPUs to use.""")
 tf.app.flags.DEFINE_boolean('log_device_placement', False,
-                            """Whether to log device placement.""")
+							"""Whether to log device placement.""")
 
 # Flags governing the type of training.
 tf.app.flags.DEFINE_boolean('fine_tune', False,
-                            """If set, randomly initialize the final layer """
-                            """of weights in order to train the network on a """
-                            """new task.""")
+							"""If set, randomly initialize the final layer """
+							"""of weights in order to train the network on a """
+							"""new task.""")
 tf.app.flags.DEFINE_string('pretrained_model_checkpoint_path', '',
-                           """If specified, restore this pretrained model """
-                           """before beginning any training.""")
+							"""If specified, restore this pretrained model """
+							"""before beginning any training.""")
 
 # **IMPORTANT**
 # Please note that this learning rate schedule is heavily dependent on the
@@ -53,154 +53,154 @@ tf.app.flags.DEFINE_string('pretrained_model_checkpoint_path', '',
 # specification. Selecting a finely tuned learning rate schedule is an
 # empirical process that requires some experimentation.
 tf.app.flags.DEFINE_float('initial_learning_rate', 0.1,
-                          """Initial learning rate.""")
+							"""Initial learning rate.""")
 tf.app.flags.DEFINE_float('num_epochs_per_decay', 60.0,
-                          """Epochs after which learning rate decays.""")
+							"""Epochs after which learning rate decays.""")
 tf.app.flags.DEFINE_float('learning_rate_decay_factor', 0.2,
-                          """Learning rate decay factor.""")
+							"""Learning rate decay factor.""")
 
 # Constants for learning
 NESTEROV_MOMENTUM = 0.9
 
 def train(dataset, scope=None):
-  """Train on dataset for a number of steps."""
-  with tf.Graph().as_default(), tf.device('/cpu:0'):
-    # Create a variable to count the number of train() calls. This equals the
-    # number of batches processed * FLAGS.num_gpus.
-    global_step = tf.get_variable(
-        'global_step', [],
-        initializer=tf.constant_initializer(0), trainable=False)
+	"""Train on dataset for a number of steps."""
+	with tf.Graph().as_default(), tf.device('/cpu:0'):
+		# Create a variable to count the number of train() calls. This equals the
+		# number of batches processed * FLAGS.num_gpus.
+		global_step = tf.get_variable(
+				'global_step', [],
+				initializer=tf.constant_initializer(0), trainable=False)
 
-    # Calculate the learning rate schedule. TODO: Adjust schedule
-    # FIXME: TEMP, use hardcoded CIFAR-10 stats
-    num_batches_per_epoch = (60000 / FLAGS.batch_size)
-    #num_batches_per_epoch = (dataset.num_examples_per_epoch() /
-    #                         FLAGS.batch_size)
-    decay_steps = int(num_batches_per_epoch * FLAGS.num_epochs_per_decay)
-    lr = tf.train.exponential_decay(FLAGS.initial_learning_rate,
-                                    global_step,
-                                    decay_steps,
-                                    FLAGS.learning_rate_decay_factor,
-                                    staircase=True)
+		# Calculate the learning rate schedule. TODO: Adjust schedule
+		# FIXME: TEMP, use hardcoded CIFAR-10 stats
+		num_batches_per_epoch = (60000 / FLAGS.batch_size)
+		#num_batches_per_epoch = (dataset.num_examples_per_epoch() /
+		#							 FLAGS.batch_size)
+		decay_steps = int(num_batches_per_epoch * FLAGS.num_epochs_per_decay)
+		lr = tf.train.exponential_decay(FLAGS.initial_learning_rate,
+										global_step,
+										decay_steps,
+										FLAGS.learning_rate_decay_factor,
+										staircase=True)
 
 
-    # Create an optimizer that performs gradient descent.
-    opt = tf.train.MomentumOptimizer(lr, momentum=NESTEROV_MOMENTUM,
-                                     use_nesterov=True)
+		# Create an optimizer that performs gradient descent.
+		opt = tf.train.MomentumOptimizer(lr, momentum=NESTEROV_MOMENTUM,
+											use_nesterov=True)
 
-    # TODO: Load images
-    # num_preprocess_threads=FLAGS.num_preprocess_threads
-    # FIXME: TEMP, use hardcoded CIFAR-10 inputs
-    images, labels = input.distorted_inputs()
-    #images, labels = image_processing.distorted_inputs(
-    #    dataset,
-    #    num_preprocess_threads=num_preprocess_threads)
+		# TODO: Load images
+		# num_preprocess_threads=FLAGS.num_preprocess_threads
+		# FIXME: TEMP, use hardcoded CIFAR-10 inputs
+		images, labels = input.distorted_inputs()
+		#images, labels = image_processing.distorted_inputs(
+		#		dataset,
+		#		num_preprocess_threads=num_preprocess_threads)
 
-    input_summaries = copy.copy(tf.get_collection(tf.GraphKeys.SUMMARIES))
+		input_summaries = copy.copy(tf.get_collection(tf.GraphKeys.SUMMARIES))
 
-    # Number of classes in the Dataset label.
-    # FIXME: TEMP, use hardcoded number of classes for CIFAR-10
-    num_classes = 10
-    #num_classes = dataset.num_classes()
-    
-    # When fine-tuning model, do not restore logits and randomly initialize
-    restore_logits = not FLAGS.fine_tune
+		# Number of classes in the Dataset label.
+		# FIXME: TEMP, use hardcoded number of classes for CIFAR-10
+		num_classes = 10
+		#num_classes = dataset.num_classes()
+		
+		# When fine-tuning model, do not restore logits and randomly initialize
+		restore_logits = not FLAGS.fine_tune
 
-    # Calculate the gradients for each model tower.
-    with tf.device('/gpu:0'):
-      with tf.variable_scope(tf.get_variable_scope()):
-        logits = wideresnet.inference(images, num_classes, for_training=True,
-                                      restore_logits=restore_logits, scope=scope)
-        loss = wideresnet.loss(logits, labels, batch_size=FLAGS.batch_size, scope=scope)
+		# Calculate the gradients for each model tower.
+		with tf.device('/gpu:0'):
+			with tf.variable_scope(tf.get_variable_scope()):
+				logits = wideresnet.inference(images, num_classes, for_training=True,
+												restore_logits=restore_logits, scope=scope)
+				loss = wideresnet.loss(logits, labels, batch_size=FLAGS.batch_size, scope=scope)
 
-        # Retain the Batch Normalization updates operations.
-        batchnorm_updates = tf.get_collection(wideresnet.UPDATE_OPS_COLLECTION,
-                                                scope)
-                    
-        # Calculate the gradients for the batch of data
-        grads = opt.compute_gradients(loss)
-        
-    # Add a summary to track the learning rate.
-    tf.summary.scalar('learning_rate', lr)
+				# Retain the Batch Normalization updates operations.
+				batchnorm_updates = tf.get_collection(wideresnet.UPDATE_OPS_COLLECTION,
+														scope)
 
-    # Add histograms for gradients.
-    for grad, var in grads:
-      if grad is not None:
-        tf.summary.histogram(var.op.name + '/gradients', grad)
+				# Calculate the gradients for the batch of data
+				grads = opt.compute_gradients(loss)
+				
+		# Add a summary to track the learning rate.
+		tf.summary.scalar('learning_rate', lr)
 
-    # Apply the gradients to adjust the shared variables.
-    apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
+		# Add histograms for gradients.
+		for grad, var in grads:
+			if grad is not None:
+				tf.summary.histogram(var.op.name + '/gradients', grad)
 
-    # Add histograms for trainable variables.
-    for var in tf.trainable_variables():
-      tf.summary.histogram(var.op.name, var)
+		# Apply the gradients to adjust the shared variables.
+		apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
 
-    # Track the moving averages of all trainable variables.
-    # Note that we maintain a "double-average" of the BatchNormalization
-    # global statistics. This is more complicated then need be but we employ
-    # this for backward-compatibility with inception models (original source).
-    variable_averages = tf.train.ExponentialMovingAverage(
-        wideresnet.MOVING_AVERAGE_DECAY, global_step)
-    variables_to_average = (tf.trainable_variables() +
-                            tf.moving_average_variables())
-    variables_averages_op = variable_averages.apply(variables_to_average)
+		# Add histograms for trainable variables.
+		for var in tf.trainable_variables():
+			tf.summary.histogram(var.op.name, var)
 
-    # Group all updates to into a single train op.
-    batchnorm_updates_op = tf.group(*batchnorm_updates)
-    train_op = tf.group(apply_gradient_op, variables_averages_op,
-                        batchnorm_updates_op)
+		# Track the moving averages of all trainable variables.
+		# Note that we maintain a "double-average" of the BatchNormalization
+		# global statistics. This is more complicated then need be but we employ
+		# this for backward-compatibility with inception models (original source).
+		variable_averages = tf.train.ExponentialMovingAverage(
+				wideresnet.MOVING_AVERAGE_DECAY, global_step)
+		variables_to_average = (tf.trainable_variables() +
+								tf.moving_average_variables())
+		variables_averages_op = variable_averages.apply(variables_to_average)
 
-    # Create a saver.
-    saver = tf.train.Saver(tf.global_variables())
+		# Group all updates to into a single train op.
+		batchnorm_updates_op = tf.group(*batchnorm_updates)
+		train_op = tf.group(apply_gradient_op, variables_averages_op,
+												batchnorm_updates_op)
 
-    # Build the summary operation.
-    summary_op = tf.summary.merge_all()
+		# Create a saver.
+		saver = tf.train.Saver(tf.global_variables())
 
-    # Build an initialization operation to run below.
-    init = tf.global_variables_initializer()
+		# Build the summary operation.
+		summary_op = tf.summary.merge_all()
 
-    # Start running operations on the Graph. allow_soft_placement allows
-    # support for ops without GPU support
-    sess = tf.Session(config=tf.ConfigProto(
-        allow_soft_placement=True,
-        log_device_placement=FLAGS.log_device_placement))
-    sess.run(init)
+		# Build an initialization operation to run below.
+		init = tf.global_variables_initializer()
 
-    if FLAGS.pretrained_model_checkpoint_path:
-      # assert tf.gfile.Exists(FLAGS.pretrained_model_checkpoint_path)
-      variables_to_restore = tf.get_collection(
-          wideresnet.VARIABLES_TO_RESTORE)
-      restorer = tf.train.import_meta_graph(FLAGS.pretrained_model_checkpoint_path + '.meta')
-      restorer.restore(sess, FLAGS.pretrained_model_checkpoint_path)
-      print('%s: Pre-trained model restored from %s' %
-            (datetime.now(), FLAGS.pretrained_model_checkpoint_path))
+		# Start running operations on the Graph. allow_soft_placement allows
+		# support for ops without GPU support
+		sess = tf.Session(config=tf.ConfigProto(
+				allow_soft_placement=True,
+				log_device_placement=FLAGS.log_device_placement))
+		sess.run(init)
 
-    # Start the queue runners. #TODO: What are these?
-    tf.train.start_queue_runners(sess=sess)
+		if FLAGS.pretrained_model_checkpoint_path:
+			# assert tf.gfile.Exists(FLAGS.pretrained_model_checkpoint_path)
+			variables_to_restore = tf.get_collection(
+					wideresnet.VARIABLES_TO_RESTORE)
+			restorer = tf.train.import_meta_graph(FLAGS.pretrained_model_checkpoint_path + '.meta')
+			restorer.restore(sess, FLAGS.pretrained_model_checkpoint_path)
+			print('%s: Pre-trained model restored from %s' %
+						(datetime.now(), FLAGS.pretrained_model_checkpoint_path))
 
-    summary_writer = tf.summary.FileWriter(
-        FLAGS.train_dir,
-        graph=sess.graph)
+		# Start the queue runners. #TODO: What are these?
+		tf.train.start_queue_runners(sess=sess)
 
-    for step in range(FLAGS.max_steps):
-      start_time = time.time()
-      _, loss_value = sess.run([train_op, loss])
-      duration = time.time() - start_time
+		summary_writer = tf.summary.FileWriter(
+				FLAGS.train_dir,
+				graph=sess.graph)
 
-      assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
+		for step in range(FLAGS.max_steps):
+			start_time = time.time()
+			_, loss_value = sess.run([train_op, loss])
+			duration = time.time() - start_time
 
-      if step % 10 == 0:
-        examples_per_sec = FLAGS.batch_size / float(duration)
-        format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
-                      'sec/batch)')
-        print(format_str % (datetime.now(), step, loss_value,
-                            examples_per_sec, duration))
+			assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
-      if step % 100 == 0:
-        summary_str = sess.run(summary_op)
-        summary_writer.add_summary(summary_str, step)
+			if step % 10 == 0:
+				examples_per_sec = FLAGS.batch_size / float(duration)
+				format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
+											'sec/batch)')
+				print(format_str % (datetime.now(), step, loss_value,
+											examples_per_sec, duration))
 
-      # Save the model checkpoint periodically.
-      if step % 500 == 0 or (step + 1) == FLAGS.max_steps:
-        checkpoint_path = os.path.join(FLAGS.train_dir, 'model.ckpt')
-        saver.save(sess, checkpoint_path, global_step=step)
+			if step % 100 == 0:
+				summary_str = sess.run(summary_op)
+				summary_writer.add_summary(summary_str, step)
+
+			# Save the model checkpoint periodically.
+			if step % 500 == 0 or (step + 1) == FLAGS.max_steps:
+				checkpoint_path = os.path.join(FLAGS.train_dir, 'model.ckpt')
+				saver.save(sess, checkpoint_path, global_step=step)

@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#		 http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -38,13 +38,6 @@ from datetime import datetime
 import math
 import time
 
-# Imports for maybe_download_and_extract TODO: move out of this file :/
-import os
-import sys
-import tarfile
-from six.moves import urllib
-DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
-
 import numpy as np
 import tensorflow as tf
 
@@ -54,131 +47,111 @@ import cifar10_input
 FLAGS = tf.app.flags.FLAGS
 
 tf.app.flags.DEFINE_string('eval_dir', '/tmp/cifar10_eval',
-                           """Directory where to write event logs.""")
+							"""Directory where to write event logs.""")
 tf.app.flags.DEFINE_string('eval_data', 'test',
-                           """Either 'test' or 'train_eval'.""")
+							"""Either 'test' or 'train_eval'.""")
 tf.app.flags.DEFINE_string('checkpoint_dir', '/tmp/cifar10_train',
-                           """Directory where to read model checkpoints.""")
+							"""Directory where to read model checkpoints.""")
 tf.app.flags.DEFINE_integer('eval_interval_secs', 60 * 5,
-                            """How often to run the eval.""")
+							"""How often to run the eval.""")
 tf.app.flags.DEFINE_integer('num_examples', 10000,
-                            """Number of examples to run.""")
+							"""Number of examples to run.""")
 tf.app.flags.DEFINE_boolean('run_once', False,
-                         """Whether to run eval only once.""")
+							"""Whether to run eval only once.""")
 
 
 def eval_once(saver, summary_writer, top_k_op, summary_op):
-  """Run Eval once.
+	"""Run Eval once.
 
-  Args:
-    saver: Saver.
-    summary_writer: Summary writer.
-    top_k_op: Top K op.
-    summary_op: Summary op.
-  """
-  with tf.Session() as sess:
-    ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
-    if ckpt and ckpt.model_checkpoint_path:
-      # Restores from checkpoint
-      saver.restore(sess, ckpt.model_checkpoint_path)
-      # Assuming model_checkpoint_path looks something like:
-      #   /my-favorite-path/cifar10_train/model.ckpt-0,
-      # extract global_step from it.
-      global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
-    else:
-      print('No checkpoint file found')
-      return
+	Args:
+		saver: Saver.
+		summary_writer: Summary writer.
+		top_k_op: Top K op.
+		summary_op: Summary op.
+	"""
+	with tf.Session() as sess:
+		ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
+		if ckpt and ckpt.model_checkpoint_path:
+			# Restores from checkpoint
+			saver.restore(sess, ckpt.model_checkpoint_path)
+			# Assuming model_checkpoint_path looks something like:
+			#	 /my-favorite-path/cifar10_train/model.ckpt-0,
+			# extract global_step from it.
+			global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
+		else:
+			print('No checkpoint file found')
+			return
 
-    # Start the queue runners.
-    coord = tf.train.Coordinator()
-    try:
-      threads = []
-      for qr in tf.get_collection(tf.GraphKeys.QUEUE_RUNNERS):
-        threads.extend(qr.create_threads(sess, coord=coord, daemon=True,
-                                         start=True))
+		# Start the queue runners.
+		coord = tf.train.Coordinator()
+		try:
+			threads = []
+			for qr in tf.get_collection(tf.GraphKeys.QUEUE_RUNNERS):
+				threads.extend(qr.create_threads(sess, coord=coord, daemon=True,
+																				 start=True))
 
-      num_iter = int(math.ceil(FLAGS.num_examples / FLAGS.batch_size))
-      true_count = 0  # Counts the number of correct predictions.
-      total_sample_count = num_iter * FLAGS.batch_size
-      step = 0
-      while step < num_iter and not coord.should_stop():
-        predictions = sess.run([top_k_op])
-        true_count += np.sum(predictions)
-        step += 1
+			num_iter = int(math.ceil(FLAGS.num_examples / FLAGS.batch_size))
+			true_count = 0	# Counts the number of correct predictions.
+			total_sample_count = num_iter * FLAGS.batch_size
+			step = 0
+			while step < num_iter and not coord.should_stop():
+				predictions = sess.run([top_k_op])
+				true_count += np.sum(predictions)
+				step += 1
 
-      # Compute precision @ 1.
-      precision = true_count / total_sample_count
-      print('%s: precision @ 1 = %.3f' % (datetime.now(), precision))
+			# Compute precision @ 1.
+			precision = true_count / total_sample_count
+			print('%s: precision @ 1 = %.3f' % (datetime.now(), precision))
 
-      summary = tf.Summary()
-      summary.ParseFromString(sess.run(summary_op))
-      summary.value.add(tag='Precision @ 1', simple_value=precision)
-      summary_writer.add_summary(summary, global_step)
-    except Exception as e:  # pylint: disable=broad-except
-      coord.request_stop(e)
+			summary = tf.Summary()
+			summary.ParseFromString(sess.run(summary_op))
+			summary.value.add(tag='Precision @ 1', simple_value=precision)
+			summary_writer.add_summary(summary, global_step)
+		except Exception as e:	# pylint: disable=broad-except
+			coord.request_stop(e)
 
-    coord.request_stop()
-    coord.join(threads, stop_grace_period_secs=10)
+		coord.request_stop()
+		coord.join(threads, stop_grace_period_secs=10)
 
 
 def evaluate():
-  """Eval CIFAR-10 for a number of steps."""
-  with tf.Graph().as_default() as g:
-    # Get images and labels for CIFAR-10.
-    eval_data = FLAGS.eval_data == 'test'
-    images, labels = cifar10_input.inputs(eval_data=eval_data)
+	"""Eval CIFAR-10 for a number of steps."""
+	with tf.Graph().as_default() as g:
+		# Get images and labels for CIFAR-10.
+		eval_data = FLAGS.eval_data == 'test'
+		images, labels = cifar10_input.inputs(eval_data=eval_data)
 
-    # Build a Graph that computes the logits predictions from the
-    # inference model.
-    logits = wideresnet.inference(images, 10)
+		# Build a Graph that computes the logits predictions from the
+		# inference model.
+		logits = wideresnet.inference(images, 10)
 
-    # Calculate predictions.
-    top_k_op = tf.nn.in_top_k(logits, labels, 1)
+		# Calculate predictions.
+		top_k_op = tf.nn.in_top_k(logits, labels, 1)
 
-    # Restore the moving average version of the learned variables for eval.
-    variable_averages = tf.train.ExponentialMovingAverage(
-        wideresnet.MOVING_AVERAGE_DECAY)
-    variables_to_restore = variable_averages.variables_to_restore()
-    saver = tf.train.Saver(variables_to_restore)
+		# Restore the moving average version of the learned variables for eval.
+		variable_averages = tf.train.ExponentialMovingAverage(
+				wideresnet.MOVING_AVERAGE_DECAY)
+		variables_to_restore = variable_averages.variables_to_restore()
+		saver = tf.train.Saver(variables_to_restore)
 
-    # Build the summary operation based on the TF collection of Summaries.
-    summary_op = tf.summary.merge_all()
+		# Build the summary operation based on the TF collection of Summaries.
+		summary_op = tf.summary.merge_all()
 
-    summary_writer = tf.summary.FileWriter(FLAGS.eval_dir, g)
+		summary_writer = tf.summary.FileWriter(FLAGS.eval_dir, g)
 
-    while True:
-      eval_once(saver, summary_writer, top_k_op, summary_op)
-      if FLAGS.run_once:
-        break
-      time.sleep(FLAGS.eval_interval_secs)
-
-def maybe_download_and_extract():
-  """Download and extract the tarball from Alex's website."""
-  dest_directory = FLAGS.data_dir
-  if not os.path.exists(dest_directory):
-    os.makedirs(dest_directory)
-  filename = DATA_URL.split('/')[-1]
-  filepath = os.path.join(dest_directory, filename)
-  if not os.path.exists(filepath):
-    def _progress(count, block_size, total_size):
-      sys.stdout.write('\r>> Downloading %s %.1f%%' % (filename,
-          float(count * block_size) / float(total_size) * 100.0))
-      sys.stdout.flush()
-    filepath, _ = urllib.request.urlretrieve(DATA_URL, filepath, _progress)
-    print()
-    statinfo = os.stat(filepath)
-    print('Successfully downloaded', filename, statinfo.st_size, 'bytes.')
-  extracted_dir_path = os.path.join(dest_directory, 'cifar-10-batches-bin')
-  if not os.path.exists(extracted_dir_path):
-    tarfile.open(filepath, 'r:gz').extractall(dest_directory)
+		while True:
+			eval_once(saver, summary_writer, top_k_op, summary_op)
+			if FLAGS.run_once:
+				break
+			time.sleep(FLAGS.eval_interval_secs)
 	
-def main(argv=None):  # pylint: disable=unused-argument
-  maybe_download_and_extract()
-  if tf.gfile.Exists(FLAGS.eval_dir):
-    tf.gfile.DeleteRecursively(FLAGS.eval_dir)
-  tf.gfile.MakeDirs(FLAGS.eval_dir)
-  evaluate()
+def main(argv=None):	# pylint: disable=unused-argument
+	maybe_download_and_extract() #TODO: Remove
+	if tf.gfile.Exists(FLAGS.eval_dir):
+		tf.gfile.DeleteRecursively(FLAGS.eval_dir)
+	tf.gfile.MakeDirs(FLAGS.eval_dir)
+	evaluate()
 
 
 if __name__ == '__main__':
-  tf.app.run()
+	tf.app.run()
