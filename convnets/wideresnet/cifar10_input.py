@@ -164,7 +164,7 @@ def mean_std(image, meanstd, scope=None):
 	
 	return normalized
  
-def distorted_inputs():												 
+def distorted_inputs(dataset): 
 	if not FLAGS.data_dir:
 		raise ValueError('Please supply a data_dir')
 	data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin')
@@ -207,7 +207,7 @@ def distorted_inputs():
 	# zero pad by 4 pixels on all sides
 	distorted_image = tf.pad(distorted_image, 
 								[[4,4], [4,4], [0,0]], "REFLECT")
-												
+
 	# randomly crop back to 32x32
 	distorted_image = tf.random_crop(distorted_image,
 										[IMAGE_SIZE, IMAGE_SIZE, 3])
@@ -228,11 +228,12 @@ def distorted_inputs():
 											min_queue_examples, batch_size,
 											shuffle=True)
 
-def inputs(eval_data):												 
+def inputs(dataset):												 
 	if not FLAGS.data_dir:
 		raise ValueError('Please supply a data_dir')
 	data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin')
 	batch_size=FLAGS.batch_size
+	eval_data = dataset.subset == 'test'
 #TODO/FIXME: Remove this jankiness
 #def inputs(eval_data, data_dir, batch_size):
 	"""Construct input for CIFAR evaluation using the Reader ops.

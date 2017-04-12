@@ -24,9 +24,6 @@ FLAGS = tf.app.flags.FLAGS
 # Basic model parameters
 tf.app.flags.DEFINE_integer('batch_size', 128, 
 							"""Number of images to process in a batch.""")
-# TODO: Move this flag out of the model and into a dataset module
-tf.app.flags.DEFINE_string('data_dir', '/tmp/cifar10_data',
-							"""Path to the data directory.""")
 tf.app.flags.DEFINE_boolean('use_fp16', False,
 							"""Train the model using fp16.""")
 
@@ -37,6 +34,7 @@ WEIGHT_DECAY = 0.0005
 # Other global flags
 VARIABLES_TO_RESTORE = '_variables_to_restore_'
 UPDATE_OPS_COLLECTION = '_update_ops_'
+
 
 def inference(images, num_classes, for_training=False, restore_logits=True,
 							scope=None):
@@ -225,7 +223,6 @@ def _residual(inputs,
 							scope='conv2', reuse=reuse, restore=restore)
 		_activation_summary(x)
 	 
-		# TODO: Handle dimension reduction & depth changes!
 		# TODO: Change shortcut to 1x1 convolutions
 		# Reduce dimensions using strided avg_pool
 		reduction = stride_1 * stride_2

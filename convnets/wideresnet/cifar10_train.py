@@ -42,16 +42,18 @@ import time
 import tensorflow as tf
 
 import wideresnet_train
-import cifar10_input as input
+from cifar10_data import CIFAR10
 
 FLAGS = tf.app.flags.FLAGS
 
-def main(argv=None):	# pylint: disable=unused-argument
-	maybe_download_and_extract() # TODO: Remove
+
+def main(_):
+	dataset = CIFAR10(subset=FLAGS.subset)
+	assert dataset.data_files()
 	if tf.gfile.Exists(FLAGS.train_dir):
 		tf.gfile.DeleteRecursively(FLAGS.train_dir)
 	tf.gfile.MakeDirs(FLAGS.train_dir)
-	wideresnet_train.train(dataset=None)
+	wideresnet_train.train(dataset)
 
 
 if __name__ == '__main__':

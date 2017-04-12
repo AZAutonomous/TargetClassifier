@@ -20,7 +20,7 @@ import tensorflow as tf
 
 #import image_processing
 import wideresnet_model as wideresnet
-import cifar10_input as input # DELETEME/TODO
+import cifar10_input as inputs # DELETEME/TODO
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -30,7 +30,7 @@ tf.app.flags.DEFINE_string('train_dir', '/tmp/imagenet_train',
 tf.app.flags.DEFINE_integer('max_steps', 10000000,
 							"""Number of batches to run.""")
 tf.app.flags.DEFINE_string('subset', 'train',
-							"""Either 'train' or 'validation'.""")
+							"""Either 'train' or 'test'.""")
 
 # Flags governing the hardware employed for running TensorFlow.
 tf.app.flags.DEFINE_integer('num_gpus', 1,
@@ -43,8 +43,8 @@ tf.app.flags.DEFINE_boolean('fine_tune', False,
 							"""If set, randomly initialize the final layer """
 							"""of weights in order to train the network on a """
 							"""new task.""")
-tf.app.flags.DEFINE_string('pretrained_model_checkpoint_path', '',
-							"""If specified, restore this pretrained model """
+tf.app.flags.DEFINE_string('checkpoint_path', '',
+							"""If specified, restore this model """
 							"""before beginning any training.""")
 
 # **IMPORTANT**
@@ -71,11 +71,9 @@ def train(dataset, scope=None):
 				'global_step', [],
 				initializer=tf.constant_initializer(0), trainable=False)
 
-		# Calculate the learning rate schedule. TODO: Adjust schedule
-		# FIXME: TEMP, use hardcoded CIFAR-10 stats
-		num_batches_per_epoch = (60000 / FLAGS.batch_size)
-		#num_batches_per_epoch = (dataset.num_examples_per_epoch() /
-		#							 FLAGS.batch_size)
+		# Calculate the learning rate schedule.
+		num_batches_per_epoch = (dataset.num_examples_per_epoch() /
+														FLAGS.batch_size)
 		decay_steps = int(num_batches_per_epoch * FLAGS.num_epochs_per_decay)
 		lr = tf.train.exponential_decay(FLAGS.initial_learning_rate,
 										global_step,
@@ -88,20 +86,14 @@ def train(dataset, scope=None):
 		opt = tf.train.MomentumOptimizer(lr, momentum=NESTEROV_MOMENTUM,
 											use_nesterov=True)
 
-		# TODO: Load images
-		# num_preprocess_threads=FLAGS.num_preprocess_threads
-		# FIXME: TEMP, use hardcoded CIFAR-10 inputs
-		images, labels = input.distorted_inputs()
-		#images, labels = image_processing.distorted_inputs(
-		#		dataset,
-		#		num_preprocess_threads=num_preprocess_threads)
+		# TODO/FIXME: TEMP, use hardcoded CIFAR-10 inputs
+		images, labels = inputs.distorted_inputs(dataset)
+		#images, labels = image_processing.distorted_inputs(dataset)
 
 		input_summaries = copy.copy(tf.get_collection(tf.GraphKeys.SUMMARIES))
 
 		# Number of classes in the Dataset label.
-		# FIXME: TEMP, use hardcoded number of classes for CIFAR-10
-		num_classes = 10
-		#num_classes = dataset.num_classes()
+		num_classes = dataset.num_classes()
 		
 		# When fine-tuning model, do not restore logits and randomly initialize
 		restore_logits = not FLAGS.fine_tune
@@ -166,16 +158,16 @@ def train(dataset, scope=None):
 				log_device_placement=FLAGS.log_device_placement))
 		sess.run(init)
 
-		if FLAGS.pretrained_model_checkpoint_path:
-			# assert tf.gfile.Exists(FLAGS.pretrained_model_checkpoint_path)
+		if FLAGS.checkpoint_path:
+			# assert tf.gfile.Exists(FLAGS.checkpoint_path)
 			variables_to_restore = tf.get_collection(
 					wideresnet.VARIABLES_TO_RESTORE)
-			restorer = tf.train.import_meta_graph(FLAGS.pretrained_model_checkpoint_path + '.meta')
-			restorer.restore(sess, FLAGS.pretrained_model_checkpoint_path)
+			restorer = tf.train.import_meta_graph(FLAGS.checkpoint_path + '.meta')
+			restorer.restore(sess, FLAGS.checkpoint_path)
 			print('%s: Pre-trained model restored from %s' %
-						(datetime.now(), FLAGS.pretrained_model_checkpoint_path))
+					(datetime.now(), FLAGS.model_checkpoint_path))
 
-		# Start the queue runners. #TODO: What are these?
+		# Start the queue runners.
 		tf.train.start_queue_runners(sess=sess)
 
 		summary_writer = tf.summary.FileWriter(
