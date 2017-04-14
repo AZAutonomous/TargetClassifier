@@ -57,6 +57,11 @@ class Dataset(object):
 	def num_examples_per_epoch(self):
 		"""Returns the number of examples in the data subset."""
 		pass
+		
+	@abstractmethod
+	def meanstd(self):
+		"""Returns mean and stddev of dataset as numpy array"""
+		pass
 
 	def available_subsets(self):
 		"""Returns the list of available subsets."""

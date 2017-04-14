@@ -35,6 +35,12 @@ class CIFAR10(Dataset):
 	def num_classes(self):
 		"""Returns the number of classes in the data set."""
 		return 10
+		
+	def meanstd(self):
+		"""Returns mean and stddev of dataset as numpy array"""
+		mean = [125.3, 123.0, 113.9] # R,G,B
+		stddev = [63.0, 62.1, 66.7] # R,G,B
+		return [mean, stddev]
 
 	def num_examples_per_epoch(self):
 		"""Returns the number of examples in the data subset."""
