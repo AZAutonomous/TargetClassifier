@@ -54,7 +54,6 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
 
 	Returns:
 		Logits. 2-D float Tensor.
-		Auxiliary Logits. 2-D float Tensor of side-head. Used for training only.
 	"""
 	# Set hyperparameters (optional, may hardcode)
 	
