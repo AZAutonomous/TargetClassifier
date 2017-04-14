@@ -165,7 +165,7 @@ def train(dataset, scope=None):
 			restorer = tf.train.import_meta_graph(FLAGS.checkpoint_path + '.meta')
 			restorer.restore(sess, FLAGS.checkpoint_path)
 			print('%s: Pre-trained model restored from %s' %
-					(datetime.now(), FLAGS.model_checkpoint_path))
+					(datetime.now(), FLAGS.checkpoint_path))
 
 		# Start the queue runners.
 		tf.train.start_queue_runners(sess=sess)
