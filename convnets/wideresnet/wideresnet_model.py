@@ -214,7 +214,9 @@ def _residual(inputs,
 							scope='conv1', reuse=reuse, restore=restore)
 		_activation_summary(x)
 
-		# TODO: Dropout
+		# Dropout
+		if is_training:
+			x = tf.nn.dropout(x, keep_prob=0.7)
 
 		# Convolution Layer 2
 		x = _batch_norm(x, scope='batchnorm2')
