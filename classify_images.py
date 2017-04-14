@@ -16,6 +16,8 @@ import json
 import numpy as np
 import tensorflow as tf
 
+import convnets.wideresnet.wideresnet_model as model
+
 # TODO: Import image classifiers!
 
 # Constants
@@ -39,41 +41,40 @@ graphs_built = False
 # TODO
 def preprocess_image(image):
 	''' Preprocess image for classification
-			Args:
-			image: np.array of size [width, height, depth]
-			Returns:
-			image: np.array of size [width, height, depth]
+	    Args:
+	        image: np.array of size [width, height, depth]
+	    Returns:
+		image: np.array of size [width, height, depth]
 	'''
 	# TODO: meanstd normalization
 	pass
 
 # TODO
 def build_graphs():
-	''' Build the TensorFlow graphs as needed, store as global variables
-	'''
-	global logits_shape
-	global inputs_shape
-	inputs_shape = tf.placeholder(tf.float32, shape=[1, IMAGE_SIZE, IMAGE_SIZE, IMAGE_CHANNELS])
-	logits_shape = TODO.inference(inputs_shape, 13, scope='shape')
-	
-	global logits_shape_color
-	global inputs_shape_color
-	inputs_shape_color = tf.placeholder(tf.float32, shape=[1, IMAGE_SIZE, IMAGE_SIZE, IMAGE_CHANNELS])
-	logits_shape_color = TODO.inference(inputs_shape_color, 13, scope='shape')
-	
-	global logits_alphanum
-	global inputs_alphanum
-	inputs_alphanum = tf.placeholder(tf.float32, shape=[1, IMAGE_SIZE, IMAGE_SIZE, IMAGE_CHANNELS])
-	logits_alphanum = TODO.inference(inputs_alphanum, 13, scope='shape')
-	
-	global logits_alphanum_color
-	global inputs_alphanum_color
-	inputs_alphanum_color = tf.placeholder(tf.float32, shape=[1, IMAGE_SIZE, IMAGE_SIZE, IMAGE_CHANNELS])
-	logits_alphanum_color = TODO.inference(inputs_alphanum_color, 13, scope='shape')
-	# TODO: Set logits to respective model.inference
-
-        global graphs_built
-        graphs_built = True
+    ''' Build the TensorFlow graphs as needed, store as global variables
+    '''
+    global logits_shape
+    global inputs_shape
+    inputs_shape = tf.placeholder(tf.float32, shape=[1, IMAGE_SIZE, IMAGE_SIZE, IMAGE_CHANNELS])
+    logits_shape = model.inference(inputs_shape, 14, scope='shape') # 13 shapes + background
+    
+    global logits_shape_color
+    global inputs_shape_color
+    inputs_shape_color = tf.placeholder(tf.float32, shape=[1, IMAGE_SIZE, IMAGE_SIZE, IMAGE_CHANNELS])
+    logits_shape_color = model.inference(inputs_shape_color, 11, scope='shape_color') # 10 colors + background
+    
+    global logits_alphanum
+    global inputs_alphanum
+    inputs_alphanum = tf.placeholder(tf.float32, shape=[1, IMAGE_SIZE, IMAGE_SIZE, IMAGE_CHANNELS])
+    logits_alphanum = model.inference(inputs_alphanum, 37, scope='alphanum') # 36 alphanums + background
+    
+    global logits_alphanum_color
+    global inputs_alphanum_color
+    inputs_alphanum_color = tf.placeholder(tf.float32, shape=[1, IMAGE_SIZE, IMAGE_SIZE, IMAGE_CHANNELS])
+    logits_alphanum_color = model.inference(inputs_alphanum_color, 11, scope='alphanum_color') # 10 colors + background
+    
+    global graphs_built
+    graphs_built = True
 
 # TODO
 def classify_shape(image):
@@ -103,11 +104,11 @@ def classify_shape_color(image):
 	# Create batch size dimension of 1
 	input_image = np.expand_dims(image, axis=0)
 	with tf.Session() as sess:
-		predictions = sess.run([logits_shape], feed_dict={inputs_shape: input_image})
+		predictions = sess.run([logits_shape_color], feed_dict={inputs_shape_color: input_image})
 		class_out = np.argmax(predictions)
 		confidence = np.max(x)
 		# TODO: Do something with the confidence
-		return shapes[class_out]
+		return colors[class_out]
 	return None
 	pass
 
@@ -125,11 +126,11 @@ def classify_letter(image):
 	input_image = np.expand_dims(image, axis=0)
 	with tf.Session() as sess:
 		# TODO: Rotate input by some interval to detect orientation
-		predictions = sess.run([logits_shape], feed_dict={inputs_shape: input_image})
+		predictions = sess.run([logits_alphanum], feed_dict={inputs_alphanum: inputs_alphanum})
 		class_out = np.argmax(predictions)
 		confidence = np.max(x)
 		# TODO: Do something with the confidence
-		return shapes[class_out]
+		return alphanums[class_out]
 	return None, None
 	pass
 
@@ -143,11 +144,11 @@ def classify_letter_color(image):
 	# Create batch size dimension of 1
 	input_image = np.expand_dims(image, axis=0)
 	with tf.Session() as sess:
-		predictions = sess.run([logits_shape], feed_dict={inputs_shape: input_image})
+		predictions = sess.run([logits_alphanum_color], feed_dict={inputs_alphanum_color: input_image})
 		class_out = np.argmax(predictions)
 		confidence = np.max(x)
 		# TODO: Do something with the confidence
-		return shapes[class_out]
+		return colors[class_out]
 	return None
 	pass
 
