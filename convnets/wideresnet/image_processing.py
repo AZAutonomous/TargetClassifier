@@ -151,86 +151,6 @@ def decode_jpeg(image_buffer, scope=None):
 		# Convert dataset to floats. Does NOT scale to [0, 1)!
 		image = tf.cast(image, tf.float32)
 		return image
-	
-# TODO: Remove bounding box
-def distort_image(image, height, width, bbox, thread_id=0, scope=None):
-	"""Distort one image for training a network.
-
-	Distorting images provides a useful technique for augmenting the data
-	set during training in order to make the network invariant to aspects
-	of the image that do not effect the label.
-
-	Args:
-		image: 3-D float Tensor of image
-		height: integer
-		width: integer
-		bbox: 3-D float Tensor of bounding boxes arranged [1, num_boxes, coords]
-			where each coordinate is [0, 1) and the coordinates are arranged
-			as [ymin, xmin, ymax, xmax].
-		thread_id: integer indicating the preprocessing thread.
-		scope: Optional scope for name_scope.
-	Returns:
-		3-D float Tensor of distorted image used for training.
-	"""
-	with tf.name_scope(values=[image, height, width, bbox], name=scope,
-										 default_name='distort_image'):
-		# Each bounding box has shape [1, num_boxes, box coords] and
-		# the coordinates are ordered [ymin, xmin, ymax, xmax].
-
-		# Display the bounding box in the first thread only.
-		if not thread_id:
-			image_with_box = tf.image.draw_bounding_boxes(tf.expand_dims(image, 0), bbox)
-			tf.summary.image('image_with_bounding_boxes', image_with_box)
-
-	# A large fraction of image datasets contain a human-annotated bounding
-	# box delineating the region of the image containing the object of interest.
-	# We choose to create a new bounding box for the object which is a randomly
-	# distorted version of the human-annotated bounding box that obeys an allowed
-	# range of aspect ratios, sizes and overlap with the human-annotated
-	# bounding box. If no box is supplied, then we assume the bounding box is
-	# the entire image.
-		sample_distorted_bounding_box = tf.image.sample_distorted_bounding_box(
-				tf.shape(image),
-				bounding_boxes=bbox,
-				min_object_covered=0.1,
-				aspect_ratio_range=[0.75, 1.33],
-				area_range=[0.05, 1.0],
-				max_attempts=100,
-				use_image_if_no_bounding_boxes=True)
-		bbox_begin, bbox_size, distort_bbox = sample_distorted_bounding_box
-		if not thread_id:
-			image_with_distorted_box = tf.image.draw_bounding_boxes(
-					tf.expand_dims(image, 0), distort_bbox)
-			tf.summary.image('images_with_distorted_bounding_box',
-											 image_with_distorted_box)
-
-		# Crop the image to the specified bounding box.
-		distorted_image = tf.slice(image, bbox_begin, bbox_size)
-
-		# This resizing operation may distort the images because the aspect
-		# ratio is not respected. We select a resize method in a round robin
-		# fashion based on the thread number.
-		# Note that ResizeMethod contains 4 enumerated resizing methods.
-		resize_method = thread_id % 4
-		distorted_image = tf.image.resize_images(distorted_image, [height, width],
-																method=resize_method)
-		# Restore the shape since the dynamic slice based upon the bbox_size loses
-		# the third dimension.
-		distorted_image.set_shape([height, width, 3])
-		if not thread_id:
-			tf.summary.image('cropped_resized_image',
-								tf.expand_dims(distorted_image, 0))
-
-		# Randomly flip the image horizontally.
-		distorted_image = tf.image.random_flip_left_right(distorted_image)
-
-		# Randomly distort the colors.
-		distorted_image = distort_color(distorted_image, thread_id)
-
-		if not thread_id:
-			tf.summary.image('final_distorted_image',
-								tf.expand_dims(distorted_image, 0))
-		return distorted_image
 
 def mean_std(image, meanstd, scope=None):
 	"""Perform mean-std normalization on images
@@ -336,7 +256,7 @@ def parse_example_proto(example_serialized):
 	features = tf.parse_single_example(example_serialized, feature_map)
 	label = tf.cast(features['image/class/label'], dtype=tf.int32)
 
-	return features['image/encoded'], label, bbox, features['image/class/text']
+	return features['image/encoded'], label, features['image/class/text']
 
 def batch_inputs(dataset, batch_size, train, num_preprocess_threads=None,
                  num_readers=1):
