@@ -44,8 +44,9 @@ import tensorflow as tf
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_integer('batch_size', 128,
-							"""Number of images to process in a batch.""")
+# Batch size flag declared in wideresnet_model.py
+#tf.app.flags.DEFINE_integer('batch_size', 128,
+#							"""Number of images to process in a batch.""")
 tf.app.flags.DEFINE_integer('image_size', 32,
 							"""Provide square images of this size.""")
 tf.app.flags.DEFINE_integer('num_preprocess_threads', 4,
@@ -183,8 +184,8 @@ def preprocess_image(image_buffer, meanstd, train):
 	Args:
 		image_buffer: 3-D Tensor containing a single image
 		meanstd: 2-D array containing mean and std dev in format
-		         [[r_mean, g_mean, b_mean],
-		          [r_std, g_std, b_std]]
+				 [[r_mean, g_mean, b_mean],
+				  [r_std, g_std, b_std]]
 		train: boolean
 
 	Returns:
@@ -259,105 +260,105 @@ def parse_example_proto(example_serialized):
 	return features['image/encoded'], label, features['image/class/text']
 
 def batch_inputs(dataset, batch_size, train, num_preprocess_threads=None,
-                 num_readers=1):
+				 num_readers=1):
   """Contruct batches of training or evaluation examples from the image dataset.
 
   Args:
-    dataset: instance of Dataset class specifying the dataset.
-      See dataset.py for details.
-    batch_size: integer
-    train: boolean
-    num_preprocess_threads: integer, total number of preprocessing threads
-    num_readers: integer, number of parallel readers
+	dataset: instance of Dataset class specifying the dataset.
+	  See dataset.py for details.
+	batch_size: integer
+	train: boolean
+	num_preprocess_threads: integer, total number of preprocessing threads
+	num_readers: integer, number of parallel readers
 
   Returns:
-    images: 4-D float Tensor of a batch of images
-    labels: 1-D integer Tensor of [batch_size].
+	images: 4-D float Tensor of a batch of images
+	labels: 1-D integer Tensor of [batch_size].
 
   Raises:
-    ValueError: if data is not found
+	ValueError: if data is not found
   """
   with tf.name_scope('batch_processing'):
-    data_files = dataset.data_files()
-    if data_files is None:
-      raise ValueError('No data files found for this dataset')
+	data_files = dataset.data_files()
+	if data_files is None:
+	  raise ValueError('No data files found for this dataset')
 
-    # Create filename_queue
-    if train:
-      filename_queue = tf.train.string_input_producer(data_files,
-                                                      shuffle=True,
-                                                      capacity=16)
-    else:
-      filename_queue = tf.train.string_input_producer(data_files,
-                                                      shuffle=False,
-                                                      capacity=1)
-    if num_preprocess_threads is None:
-      num_preprocess_threads = FLAGS.num_preprocess_threads
+	# Create filename_queue
+	if train:
+	  filename_queue = tf.train.string_input_producer(data_files,
+													  shuffle=True,
+													  capacity=16)
+	else:
+	  filename_queue = tf.train.string_input_producer(data_files,
+													  shuffle=False,
+													  capacity=1)
+	if num_preprocess_threads is None:
+	  num_preprocess_threads = FLAGS.num_preprocess_threads
 
-    if num_preprocess_threads % 4:
-      raise ValueError('Please make num_preprocess_threads a multiple '
-                       'of 4 (%d % 4 != 0).', num_preprocess_threads)
+	if num_preprocess_threads % 4:
+	  raise ValueError('Please make num_preprocess_threads a multiple '
+					   'of 4 (%d % 4 != 0).', num_preprocess_threads)
 
-    if num_readers is None:
-      num_readers = FLAGS.num_readers
+	if num_readers is None:
+	  num_readers = FLAGS.num_readers
 
-    if num_readers < 1:
-      raise ValueError('Please make num_readers at least 1')
+	if num_readers < 1:
+	  raise ValueError('Please make num_readers at least 1')
 
-    # Approximate number of examples per shard.
-    examples_per_shard = 1024
-    # Size the random shuffle queue to balance between good global
-    # mixing (more examples) and memory use (fewer examples).
-    # 1 image uses 32*32*3*4 bytes = 12 KB
-    # The default input_queue_memory_factor is 16 implying a shuffling queue
-    # size: examples_per_shard * 16 * 12KB = 192 MB
-    min_queue_examples = examples_per_shard * FLAGS.input_queue_memory_factor
-    if train:
-      examples_queue = tf.RandomShuffleQueue(
-          capacity=min_queue_examples + 3 * batch_size,
-          min_after_dequeue=min_queue_examples,
-          dtypes=[tf.string])
-    else:
-      examples_queue = tf.FIFOQueue(
-          capacity=examples_per_shard + 3 * batch_size,
-          dtypes=[tf.string])
+	# Approximate number of examples per shard.
+	examples_per_shard = 1024
+	# Size the random shuffle queue to balance between good global
+	# mixing (more examples) and memory use (fewer examples).
+	# 1 image uses 32*32*3*4 bytes = 12 KB
+	# The default input_queue_memory_factor is 16 implying a shuffling queue
+	# size: examples_per_shard * 16 * 12KB = 192 MB
+	min_queue_examples = examples_per_shard * FLAGS.input_queue_memory_factor
+	if train:
+	  examples_queue = tf.RandomShuffleQueue(
+		  capacity=min_queue_examples + 3 * batch_size,
+		  min_after_dequeue=min_queue_examples,
+		  dtypes=[tf.string])
+	else:
+	  examples_queue = tf.FIFOQueue(
+		  capacity=examples_per_shard + 3 * batch_size,
+		  dtypes=[tf.string])
 
-    # Create multiple readers to populate the queue of examples.
-    if num_readers > 1:
-      enqueue_ops = []
-      for _ in range(num_readers):
-        reader = dataset.reader()
-        _, value = reader.read(filename_queue)
-        enqueue_ops.append(examples_queue.enqueue([value]))
+	# Create multiple readers to populate the queue of examples.
+	if num_readers > 1:
+	  enqueue_ops = []
+	  for _ in range(num_readers):
+		reader = dataset.reader()
+		_, value = reader.read(filename_queue)
+		enqueue_ops.append(examples_queue.enqueue([value]))
 
-      tf.train.queue_runner.add_queue_runner(
-          tf.train.queue_runner.QueueRunner(examples_queue, enqueue_ops))
-      example_serialized = examples_queue.dequeue()
-    else:
-      reader = dataset.reader()
-      _, example_serialized = reader.read(filename_queue)
+	  tf.train.queue_runner.add_queue_runner(
+		  tf.train.queue_runner.QueueRunner(examples_queue, enqueue_ops))
+	  example_serialized = examples_queue.dequeue()
+	else:
+	  reader = dataset.reader()
+	  _, example_serialized = reader.read(filename_queue)
 
-    images_and_labels = []
-    for thread_id in range(num_preprocess_threads):
-      # Parse a serialized Example proto to extract the image and metadata.
-      image_buffer, label_index, _ = parse_example_proto(example_serialized)
+	images_and_labels = []
+	for thread_id in range(num_preprocess_threads):
+	  # Parse a serialized Example proto to extract the image and metadata.
+	  image_buffer, label_index, _ = parse_example_proto(example_serialized)
 	  image = preprocess_image(image_buffer, dataset.meanstd(), train)
-      images_and_labels.append([image, label_index])
+	  images_and_labels.append([image, label_index])
 
-    images, label_index_batch = tf.train.batch_join(
-        images_and_labels,
-        batch_size=batch_size,
-        capacity=2 * num_preprocess_threads * batch_size)
+	images, label_index_batch = tf.train.batch_join(
+		images_and_labels,
+		batch_size=batch_size,
+		capacity=2 * num_preprocess_threads * batch_size)
 
-    # Reshape images into these desired dimensions.
-    height = FLAGS.image_size
-    width = FLAGS.image_size
-    depth = 3
+	# Reshape images into these desired dimensions.
+	height = FLAGS.image_size
+	width = FLAGS.image_size
+	depth = 3
 
-    images = tf.cast(images, tf.float32) # FIXME: This cast is redundant
-    images = tf.reshape(images, shape=[batch_size, height, width, depth])
+	images = tf.cast(images, tf.float32) # FIXME: This cast is redundant
+	images = tf.reshape(images, shape=[batch_size, height, width, depth])
 
-    # Display the training images in the visualizer.
-    tf.image_summary('images', images)
+	# Display the training images in the visualizer.
+	tf.image_summary('images', images)
 
-    return images, tf.reshape(label_index_batch, [batch_size])
+	return images, tf.reshape(label_index_batch, [batch_size])

@@ -75,18 +75,17 @@ class Dataset(object):
 		Raises:
 			ValueError: if there are not data_files matching the subset.
 		"""
-		return True
-	# FIXME: Temporarily disabled data_files function
-	def _disabled(self): # The function body below belongs to data_files()
 		tf_record_pattern = os.path.join(FLAGS.data_dir, '%s-*' % self.subset)
-		data_files = tf.gfile.Glob(tf_record_pattern)
-		if not data_files:
+		try:
+			data_files = tf.gfile.Glob(tf_record_pattern)
+		except:
 			# Try to resolve missing data_files, if applicable
 			print('Could not find files. Trying to resolve')
 			self.download_data_files(FLAGS.data_dir)
-			data_files = tf.gfile.Glob(tf_record_pattern) # Try again
+			try:
+				data_files = tf.gfile.Glob(tf_record_pattern) # Try again
 			# If still no data files, exit and report error.
-			if not data_files:
+			except:
 				print('No files found for dataset %s/%s at %s' % (self.name,
 																self.subset,
 																FLAGS.data_dir))

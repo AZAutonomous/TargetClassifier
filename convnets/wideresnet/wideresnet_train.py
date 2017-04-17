@@ -18,7 +18,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-#import image_processing
+import image_processing
 import wideresnet_model as wideresnet
 import cifar10_input as inputs # DELETEME/TODO
 
@@ -87,8 +87,8 @@ def train(dataset, scope=None):
 											use_nesterov=True)
 
 		# TODO/FIXME: TEMP, use hardcoded CIFAR-10 inputs
-		images, labels = inputs.distorted_inputs(dataset)
-		#images, labels = image_processing.distorted_inputs(dataset)
+		# images, labels = inputs.distorted_inputs(dataset)
+		images, labels = image_processing.distorted_inputs(dataset)
 
 		input_summaries = copy.copy(tf.get_collection(tf.GraphKeys.SUMMARIES))
 
