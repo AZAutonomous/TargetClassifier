@@ -45,9 +45,9 @@ class Shapes(Dataset):
 	def num_examples_per_epoch(self):
 		"""Returns the number of examples in the data subset."""
 		if self.subset == 'train':
-			return 50000 #TODO
+			return 40274 #TODO
 		if self.subset == 'validation':
-			return 10000 #TODO
+			return 1846 #TODO
 
 	def download_data_files(self, dest_directory):
 		print("Downloading data is not currently supported")
