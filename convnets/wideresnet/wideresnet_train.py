@@ -20,7 +20,7 @@ import tensorflow as tf
 
 import image_processing
 import wideresnet_model as wideresnet
-import cifar10_input as inputs # DELETEME/TODO
+# import cifar10_input as inputs # DELETEME/TODO
 
 FLAGS = tf.app.flags.FLAGS
 

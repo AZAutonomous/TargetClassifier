@@ -123,13 +123,10 @@ def loss(logits, labels, batch_size=None, scope=None):
 	logits.get_shape().assert_is_compatible_with(one_hot.get_shape())
 	
 	with tf.variable_scope(scope, 'cross_entropy_loss', [logits, one_hot]):
-		# NOTE: Consider label smoothing (S7, https://arxiv.org/pdf/1512.00567.pdf)
 		cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
 										logits=logits, labels=one_hot, name='xentropy')
 		loss = tf.reduce_mean(cross_entropy, name='avg_xentropy')
 		
-		# TODO: Calculate cross entropy loss of auxiliary softmax? (wth is this?)
-
 		# Compute the total loss
 		regularization_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
 		total_loss = tf.add_n([loss] + regularization_loss, name='total_loss')
