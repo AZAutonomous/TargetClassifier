@@ -39,7 +39,7 @@ class Shapes(Dataset):
 	def meanstd(self):
 		"""Returns mean and stddev of dataset as numpy array"""
 		mean = [60.245, 130.373, 129.667] # R,G,B #TODO
-		stddev = [56.156, 52,878, 55.274] # R,G,B #TODO
+		stddev = [56.156, 52.878, 55.274] # R,G,B #TODO
 		return [mean, stddev]
 
 	def num_examples_per_epoch(self):

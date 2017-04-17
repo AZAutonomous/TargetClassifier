@@ -158,7 +158,7 @@ def mean_std(image, meanstd, scope=None):
 
 	Args:
 		image: 3-D Tensor containing a single image.
-	meanstd: 2-D array containing mean and std dev in format
+		meanstd: 2-D array containing mean and std dev in format
 					 [[r_mean, g_mean, b_mean],
 			 [r_std, g_std, b_std]]
 		scope: Optional scope for name_scope.
