@@ -157,15 +157,15 @@ def mean_std(image, meanstd, scope=None):
 	"""Perform mean-std normalization on images
 
 	Args:
-		images: 3-D Tensor containing all images from a dataset.
+		image: 3-D Tensor containing a single image.
 	meanstd: 2-D array containing mean and std dev in format
 					 [[r_mean, g_mean, b_mean],
 			 [r_std, g_std, b_std]]
 		scope: Optional scope for name_scope.
 	Returns:
-		a 3-D Tensor containing meanstd normalized images
+		a 3-D Tensor containing meanstd normalized image
 	"""
-	with tf.name_scope(values=[images], name=scope,
+	with tf.name_scope(values=[image], name=scope,
 						default_name='calc_mean_std'):
 		# Calculate meanstd
 		mean = tf.constant(meanstd[0], tf.float32)
@@ -192,9 +192,9 @@ def preprocess_image(image_buffer, meanstd, train):
 		images: 3-D float Tensor of a preprocessed image
 	"""
 	image_size = FLAGS.image_size
-	assert image.get_shape() == [image_size, image_size, 3]
 	
 	image = decode_jpeg(image_buffer)
+	# assert image.get_shape() == [image_size, image_size, 3]
 	
 	# meanstd normalization against entire dataset
 	preprocessed_image = mean_std(image, meanstd)
@@ -247,7 +247,7 @@ def parse_example_proto(example_serialized):
 	feature_map = {
 			'image/encoded': tf.FixedLenFeature([], dtype=tf.string,
 															default_value=''),
-			'image/class/label': tf.FixedLenFeature([1], dtype=tf.int32,
+			'image/class/label': tf.FixedLenFeature([1], dtype=tf.int64,
 															default_value=-1),
 			'image/class/text': tf.FixedLenFeature([], dtype=tf.string,
 															default_value=''),
@@ -359,6 +359,6 @@ def batch_inputs(dataset, batch_size, train, num_preprocess_threads=None,
 	images = tf.reshape(images, shape=[batch_size, height, width, depth])
 
 	# Display the training images in the visualizer.
-	tf.image_summary('images', images)
+	tf.summary.image('images', images)
 
 	return images, tf.reshape(label_index_batch, [batch_size])
