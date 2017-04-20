@@ -36,7 +36,7 @@ def main(_):
 	if tf.gfile.Exists(FLAGS.train_dir):
 		tf.gfile.DeleteRecursively(FLAGS.train_dir)
 	tf.gfile.MakeDirs(FLAGS.train_dir)
-	wideresnet_train.train(dataset)
+	wideresnet_train.train(dataset, scope='shapes')
 
 
 if __name__ == '__main__':

@@ -30,7 +30,7 @@ tf.app.flags.DEFINE_string('train_dir', '/tmp/imagenet_train',
 tf.app.flags.DEFINE_integer('max_steps', 10000000,
 							"""Number of batches to run.""")
 tf.app.flags.DEFINE_string('subset', 'train',
-							"""Either 'train' or 'test'.""")
+							"""Either 'train' or 'validation'.""")
 
 # Flags governing the hardware employed for running TensorFlow.
 tf.app.flags.DEFINE_integer('num_gpus', 1,
@@ -62,7 +62,7 @@ tf.app.flags.DEFINE_float('learning_rate_decay_factor', 0.2,
 # Constants for learning
 NESTEROV_MOMENTUM = 0.9
 
-def train(dataset, scope=None):
+def train(dataset, preserve_view=False, scope=None):
 	"""Train on dataset for a number of steps."""
 	with tf.Graph().as_default(), tf.device('/cpu:0'):
 		# Create a variable to count the number of train() calls. This equals the
@@ -88,7 +88,7 @@ def train(dataset, scope=None):
 
 		# TODO/FIXME: TEMP, use hardcoded CIFAR-10 inputs
 		# images, labels = inputs.distorted_inputs(dataset)
-		images, labels = image_processing.distorted_inputs(dataset)
+		images, labels = image_processing.distorted_inputs(dataset, preserve_view=preserve_view)
 
 		input_summaries = copy.copy(tf.get_collection(tf.GraphKeys.SUMMARIES))
 
@@ -163,6 +163,7 @@ def train(dataset, scope=None):
 			variables_to_restore = tf.get_collection(
 					wideresnet.VARIABLES_TO_RESTORE)
 			restorer = tf.train.import_meta_graph(FLAGS.checkpoint_path + '.meta')
+			#restorer = tf.train.Saver(variables_to_restore)
 			restorer.restore(sess, FLAGS.checkpoint_path)
 			print('%s: Pre-trained model restored from %s' %
 					(datetime.now(), FLAGS.checkpoint_path))

@@ -11,8 +11,8 @@ import time
 import numpy as np
 import tensorflow as tf
 
-# import image_processing # TODO: Complete migration
-import cifar10_input as inputs
+import image_processing # TODO: Complete migration
+# import cifar10_input as inputs
 import wideresnet_model as wideresnet
 
 FLAGS = tf.app.flags.FLAGS
@@ -32,8 +32,8 @@ tf.app.flags.DEFINE_boolean('run_once', False,
 # Eval data flags
 tf.app.flags.DEFINE_integer('num_examples', 10000,
 							"""Number of examples to run.""")
-tf.app.flags.DEFINE_string('subset', 'test',
-							"""Either 'test' or 'train'.""")
+tf.app.flags.DEFINE_string('subset', 'validation',
+							"""Either 'validation' or 'train'.""")
 
 
 def eval_once(saver, summary_writer, top_k_op, summary_op):
@@ -111,8 +111,8 @@ def evaluate(dataset):
 	"""Evaluate model on Dataset for a number of steps."""
 	with tf.Graph().as_default() as g:
 		# Get images and labels from the dataset.
-		images, labels = inputs.inputs(dataset)
-		#images, labels = image_processing.inputs(dataset) #TODO: migrate to image_processing
+		# images, labels = inputs.inputs(dataset)
+		images, labels = image_processing.inputs(dataset) #TODO: migrate to image_processing
 
 		# Build a Graph that computes the logits predictions from the
 		# inference model.

@@ -65,7 +65,7 @@ class Dataset(object):
 
 	def available_subsets(self):
 		"""Returns the list of available subsets."""
-		return ['train', 'test']
+		return ['train', 'validation']
 
 	def data_files(self):
 		"""Returns a python list of all (sharded) data subset files.

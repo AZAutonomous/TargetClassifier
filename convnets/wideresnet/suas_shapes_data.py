@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Small library that points to the flowers data set.
+"""Small library that points to the SUAS shapes dataset
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -28,7 +28,7 @@ from six.moves import urllib
 DATA_URL = 'azautonomous.com' # TODO 
 
 class Shapes(Dataset):
-	"""CIFAR-10 Dataset"""
+	"""SUAS Shapes dataset"""
 	def __init__(self, subset):
 		super(Shapes, self).__init__('Shapes', subset)
 
