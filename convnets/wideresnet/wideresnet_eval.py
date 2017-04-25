@@ -107,7 +107,7 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
 		coord.join(threads, stop_grace_period_secs=10)
 
 
-def evaluate(dataset):
+def evaluate(dataset, scope=None):
 	"""Evaluate model on Dataset for a number of steps."""
 	with tf.Graph().as_default() as g:
 		# Get images and labels from the dataset.
@@ -116,7 +116,7 @@ def evaluate(dataset):
 
 		# Build a Graph that computes the logits predictions from the
 		# inference model.
-		logits = wideresnet.inference(images, dataset.num_classes())
+		logits = wideresnet.inference(images, dataset.num_classes(), scope=scope)
 
 		# Calculate predictions.
 		top_k_op = tf.nn.in_top_k(logits, labels, 1)
