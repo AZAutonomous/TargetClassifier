@@ -126,8 +126,6 @@ def evaluate(dataset, scope=None):
 								wideresnet.MOVING_AVERAGE_DECAY)
 		variables_to_restore = variable_averages.variables_to_restore()
 		saver = tf.train.Saver(variables_to_restore)
-		# If things error out, consider:
-		# saver = tf.train.import_meta_graph(FLAGS.pretrained_model_checkpoint_path + '.meta')
 
 		# Build the summary operation based on the TF collection of Summaries.
 		summary_op = tf.summary.merge_all()
