@@ -75,9 +75,9 @@ class TargetClassifier():
 		# Shape
 		self.shape_sess = tf.Session()
 		shape_saver = tf.train.Saver()
-		shape_ckpt = tf.train.get_checkpoint_state(os.path.join(checkpoint_dir, 'shape')
+		shape_ckpt = tf.train.get_checkpoint_state(os.path.join(checkpoint_dir, 'shape'))
 		if shape_ckpt and shape_ckpt.model_checkpoint_path:
-			print('Reading shape model parameters from %s', % shape_ckpt.model_checkpoint_path)
+			print('Reading shape model parameters from %s' % shape_ckpt.model_checkpoint_path)
 			#shape_saver.restore(self.shape_sess, self.shape_ckpt.model_checkpoint_path)
 			saver.restore(self.shape_sess, shape_ckpt.model_checkpoint_path)
 		else:
@@ -89,9 +89,9 @@ class TargetClassifier():
 		# Shape Color
 		self.shape_color_sess = tf.Session()
 		shape_color_saver = tf.train.Saver()
-		shape_color_ckpt = tf.train.get_checkpoint_state(os.path.join(checkpoint_dir, 'shape_color')
+		shape_color_ckpt = tf.train.get_checkpoint_state(os.path.join(checkpoint_dir, 'shape_color'))
 		if shape_color_ckpt and shape_color_ckpt.model_checkpoint_path:
-			print('Reading shape_color model parameters from %s', % shape_color_ckpt.model_checkpoint_path)
+			print('Reading shape_color model parameters from %s' % shape_color_ckpt.model_checkpoint_path)
 			#shape_color_saver.restore(self.shape_color_sess , shape_color_ckpt.model_checkpoint_path)
 			saver.restore(self.shape_color_sess , shape_color_ckpt.model_checkpoint_path)
 		else:
@@ -103,9 +103,9 @@ class TargetClassifier():
 		# Alphanum
 		self.alphanum_sess = tf.Session()
 		alphanum_saver = tf.train.Saver()
-		alphanum_ckpt = tf.train.get_checkpoint_state(os.path.join(checkpoint_dir, 'alphanum')
+		alphanum_ckpt = tf.train.get_checkpoint_state(os.path.join(checkpoint_dir, 'alphanum'))
 		if alphanum_ckpt and alphanum_ckpt.model_checkpoint_path:
-			print('Reading alphanum model parameters from %s', % alphanum_ckpt.model_checkpoint_path)
+			print('Reading alphanum model parameters from %s' % alphanum_ckpt.model_checkpoint_path)
 			#alphanum_saver.restore(self.alphanum_sess, alphanum_ckpt.model_checkpoint_path)
 			saver.restore(self.alphanum_sess, alphanum_ckpt.model_checkpoint_path)
 		else:
@@ -117,9 +117,9 @@ class TargetClassifier():
 		# Alphanum Color
 		self.alphanum_color_sess = tf.Session()
 		alphanum_color_saver = tf.train.Saver()
-		alphanum_color_ckpt = tf.train.get_checkpoint_state(os.path.join(checkpoint_dir, 'alphanum_color')
+		alphanum_color_ckpt = tf.train.get_checkpoint_state(os.path.join(checkpoint_dir, 'alphanum_color'))
 		if alphanum_color_ckpt and alphanum_color_ckpt.model_checkpoint_path:
-			print('Reading alphanum_color model parameters from %s', % alphanum_color_ckpt.model_checkpoint_path)
+			print('Reading alphanum_color model parameters from %s' % alphanum_color_ckpt.model_checkpoint_path)
 			#alphanum_color_saver.restore(self.alphanum_color_sess, alphanum_color_ckpt.model_checkpoint_path)
 			saver.restore(self.alphanum_color_sess, alphanum_color_ckpt.model_checkpoint_path)
 		else:
@@ -140,7 +140,7 @@ class TargetClassifier():
 		if (np.greater(im.shape[:2], [IMAGE_SIZE, IMAGE_SIZE]).any()):
 			# Scale down
 			im = cv2.resize(im, dsize=(IMAGE_SIZE, IMAGE_SIZE), interpolation=cv2.CV_INTER_AREA)
-		else if (np.less(im.shape[:2], [IMAGE_SIZE, IMAGE_SIZE]).any()):
+		elif (np.less(im.shape[:2], [IMAGE_SIZE, IMAGE_SIZE]).any()):
 			# Scale up
 			im = cv2.resize(im, dsize=(IMAGE_SIZE, IMAGE_SIZE), interpolation=cv2.CV_INTER_CUBIC)
 		# MeanStd normalization
@@ -186,7 +186,7 @@ class TargetClassifier():
 		# TODO: Rotate input by some interval to detect orientation
 		rot = 0
 		class_out_dict = {}
-		while (rot < 360)
+		while (rot < 360):
 			# TODO: Rotate image clockwise by rot degrees
 			predictions = self.alphanum_sess.run([self.logits_alphanum],
 													feed_dict={self.inputs_alphanum: inputs_alphanum})
