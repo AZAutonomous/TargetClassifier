@@ -36,7 +36,8 @@ def main(_):
 	if tf.gfile.Exists(FLAGS.train_dir):
 		tf.gfile.DeleteRecursively(FLAGS.train_dir)
 	tf.gfile.MakeDirs(FLAGS.train_dir)
-	wideresnet_train.train(dataset, preserve_view=True, scope='alphanums')
+	wideresnet_train.train(dataset, preserve_view=True,
+	                       classname='alphanumeric', scope='alphanums')
 
 
 if __name__ == '__main__':

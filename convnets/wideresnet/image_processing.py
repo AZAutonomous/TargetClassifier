@@ -67,7 +67,7 @@ tf.app.flags.DEFINE_integer('num_readers', 4,
 tf.app.flags.DEFINE_integer('input_queue_memory_factor', 192,
 							"""Size of the queue of preprocessed images. """)
 
-def inputs(dataset, batch_size=None, num_preprocess_threads=None):
+def inputs(dataset, batch_size=None, num_preprocess_threads=None, classname=None):
 	"""Generate batches of images for evaluation.
 
 	Use this function as the inputs for evaluating a network.
@@ -80,6 +80,7 @@ def inputs(dataset, batch_size=None, num_preprocess_threads=None):
 		batch_size: integer, number of examples in batch
 		num_preprocess_threads: integer, total number of preprocessing threads but
 			None defaults to FLAGS.num_preprocess_threads.
+		classname: string, label class identifier
 
 	Returns:
 		images: Images. 4D tensor of size [batch_size, FLAGS.image_size,
@@ -94,13 +95,14 @@ def inputs(dataset, batch_size=None, num_preprocess_threads=None):
 	with tf.device('/cpu:0'):
 		images, labels = batch_inputs(
 					dataset, batch_size, train=False,
+					classname=classname,
 					num_preprocess_threads=num_preprocess_threads,
 					num_readers=1)
 
 	return images, labels
 
 
-def distorted_inputs(dataset, preserve_view=False, batch_size=None, num_preprocess_threads=None):
+def distorted_inputs(dataset, preserve_view=False, classname=None, batch_size=None, num_preprocess_threads=None):
 	"""Generate batches of distorted versions of ImageNet images.
 
 	Use this function as the inputs for training a network.
@@ -112,6 +114,7 @@ def distorted_inputs(dataset, preserve_view=False, batch_size=None, num_preproce
 	Args:
 		dataset: instance of Dataset class specifying the dataset.
 		preserve_view: Boolean, flag for whether to preserve orientation
+		classname: string, identifier for label class
 		batch_size: integer, number of examples in batch
 		num_preprocess_threads: integer, total number of preprocessing threads but
 			None defaults to FLAGS.num_preprocess_threads.
@@ -130,6 +133,7 @@ def distorted_inputs(dataset, preserve_view=False, batch_size=None, num_preproce
 		images, labels = batch_inputs(
 				dataset, batch_size, train=True,
 				preserve_view=preserve_view,
+				classname=classname,
 				num_preprocess_threads=num_preprocess_threads,
 				num_readers=FLAGS.num_readers)
 	return images, labels
@@ -223,7 +227,7 @@ def preprocess_image(image_buffer, meanstd, train, preserve_view=False):
 
 	return preprocessed_image
 	
-def parse_example_proto(example_serialized):
+def parse_example_proto(example_serialized, classname=None):
 	"""Parses an Example proto containing a training example of an image.
 
 	The output of the build_image_data.py image preprocessing script is a dataset
@@ -234,8 +238,8 @@ def parse_example_proto(example_serialized):
 		image/width: 32
 		image/colorspace: 'RGB'
 		image/channels: 3
-		image/class/label: 3
-		image/class/text: 'knee pad'
+		image/$class/label: 3
+		image/$class/text: 'knee pad'
 		image/format: 'JPEG'
 		image/filename: 'ILSVRC2012_val_00041207.JPEG'
 		image/encoded: <JPEG encoded string>
@@ -243,30 +247,35 @@ def parse_example_proto(example_serialized):
 	Args:
 		example_serialized: scalar Tensor tf.string containing a serialized
 			Example protocol buffer.
+		classname: string containing class identifier
 
 	Returns:
 		image_buffer: Tensor tf.string containing the contents of a JPEG file.
 		label: Tensor tf.int32 containing the label.
 		text: Tensor tf.string containing the human-readable label.
 	"""
+	# Maintain compatibility with generic example protos
+	if classname is None:
+		classname = 'class'
+
 	# Dense features in Example proto.
 	feature_map = {
 			'image/encoded': tf.FixedLenFeature([], dtype=tf.string,
 															default_value=''),
-			'image/class/label': tf.FixedLenFeature([1], dtype=tf.int64,
+			'image/%s/label' % classname: tf.FixedLenFeature([1], dtype=tf.int64,
 															default_value=-1),
-			'image/class/text': tf.FixedLenFeature([], dtype=tf.string,
+			'image/%s/text' % classname: tf.FixedLenFeature([], dtype=tf.string,
 															default_value=''),
 	}
 	sparse_float32 = tf.VarLenFeature(dtype=tf.float32)
 
 	features = tf.parse_single_example(example_serialized, feature_map)
-	label = tf.cast(features['image/class/label'], dtype=tf.int32)
+	label = tf.cast(features['image/%s/label' % classname], dtype=tf.int32)
 
-	return features['image/encoded'], label, features['image/class/text']
+	return features['image/encoded'], label, features['image/%s/text' % classname]
 
-def batch_inputs(dataset, batch_size, train, preserve_view=False, num_preprocess_threads=None,
-				 num_readers=1):
+def batch_inputs(dataset, batch_size, train, preserve_view=False,
+                 classname=None, num_preprocess_threads=None, num_readers=1):
 	"""Contruct batches of training or evaluation examples from the image dataset.
 
 	Args:
@@ -275,6 +284,7 @@ def batch_inputs(dataset, batch_size, train, preserve_view=False, num_preprocess
 	batch_size: integer
 	train: boolean
 	preserve_view: boolean
+	classname: string, identifier for class to extract labels/texts from
 	num_preprocess_threads: integer, total number of preprocessing threads
 	num_readers: integer, number of parallel readers
 
@@ -348,7 +358,7 @@ def batch_inputs(dataset, batch_size, train, preserve_view=False, num_preprocess
 		images_and_labels = []
 		for thread_id in range(num_preprocess_threads):
 			# Parse a serialized Example proto to extract the image and metadata.
-			image_buffer, label_index, _ = parse_example_proto(example_serialized)
+			image_buffer, label_index, _ = parse_example_proto(example_serialized, classname=classname)
 			image = preprocess_image(image_buffer, dataset.meanstd(), train, preserve_view=preserve_view)
 			images_and_labels.append([image, label_index])
 	

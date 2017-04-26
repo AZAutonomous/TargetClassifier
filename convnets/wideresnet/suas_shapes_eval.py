@@ -37,7 +37,8 @@ def main(_):
 	if tf.gfile.Exists(FLAGS.eval_dir):
 		tf.gfile.DeleteRecursively(FLAGS.eval_dir)
 	tf.gfile.MakeDirs(FLAGS.eval_dir)
-	wideresnet_eval.evaluate(dataset, scope='shapes')
+	wideresnet_eval.evaluate(dataset, classname='shape',
+                                 scope='shapes')
 
 
 if __name__ == '__main__':

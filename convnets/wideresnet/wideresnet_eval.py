@@ -107,12 +107,12 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
 		coord.join(threads, stop_grace_period_secs=10)
 
 
-def evaluate(dataset, scope=None):
+def evaluate(dataset, classname=None, scope=None):
 	"""Evaluate model on Dataset for a number of steps."""
 	with tf.Graph().as_default() as g:
 		# Get images and labels from the dataset.
 		# images, labels = inputs.inputs(dataset)
-		images, labels = image_processing.inputs(dataset) #TODO: migrate to image_processing
+		images, labels = image_processing.inputs(dataset, classname=classname)
 
 		# Build a Graph that computes the logits predictions from the
 		# inference model.

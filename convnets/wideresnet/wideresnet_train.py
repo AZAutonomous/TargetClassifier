@@ -20,7 +20,6 @@ import tensorflow as tf
 
 import image_processing
 import wideresnet_model as wideresnet
-# import cifar10_input as inputs # DELETEME/TODO
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -62,7 +61,7 @@ tf.app.flags.DEFINE_float('learning_rate_decay_factor', 0.2,
 # Constants for learning
 NESTEROV_MOMENTUM = 0.9
 
-def train(dataset, preserve_view=False, scope=None):
+def train(dataset, classname=None, preserve_view=False, scope=None):
 	"""Train on dataset for a number of steps."""
 	with tf.Graph().as_default(), tf.device('/cpu:0'):
 		# Create a variable to count the number of train() calls. This equals the
@@ -86,9 +85,7 @@ def train(dataset, preserve_view=False, scope=None):
 		opt = tf.train.MomentumOptimizer(lr, momentum=NESTEROV_MOMENTUM,
 											use_nesterov=True)
 
-		# TODO/FIXME: TEMP, use hardcoded CIFAR-10 inputs
-		# images, labels = inputs.distorted_inputs(dataset)
-		images, labels = image_processing.distorted_inputs(dataset, preserve_view=preserve_view)
+		images, labels = image_processing.distorted_inputs(dataset, classname=classname, preserve_view=preserve_view)
 
 		input_summaries = copy.copy(tf.get_collection(tf.GraphKeys.SUMMARIES))
 
