@@ -41,6 +41,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from random import shuffle
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -141,7 +142,7 @@ def decode_jpeg(image_buffer, scope=None):
 		image_buffer: scalar string Tensor.
 		scope: Optional scope for name_scope.
 	Returns:
-		3-D float Tensor with values ranging from [0, 255).
+		3-D float Tensor with values ranging from [0, 255]
 	"""
 	with tf.name_scope(values=[image_buffer], name=scope,
 								default_name='decode_jpeg'):
@@ -180,6 +181,34 @@ def mean_std(image, meanstd, scope=None):
 		return normalized
 	
 	
+def distort_color(image):
+	"""Distort the color of the image.
+	
+	Args:
+		image: Tensor containing single image.
+		thread_id: preprocessing thread ID.
+		scope: Optional scope for op_scope.
+	Returns:
+		color-distorted image
+	"""
+	def random_brightness(image):
+		return tf.image.random_brightness(image, max_delta=32./255.)
+	def random_saturation(image):
+		return tf.image.random_saturation(image, lower=0.5, upper=1.5)
+	def random_hue(image):
+		return tf.image.random_hue(image, max_delta=0.2)
+	def random_contrast(image):
+		return tf.image.random_contrast(image, lower=0.5, upper=1.5)
+	distortions = [random_brightness, random_saturation, random_hue, random_constrast]
+	shuffle(distortions) # Randomize distortion order
+	for distort in distortions:
+		image = distort(image)
+	
+	# Clamp distorted image to [0, 255]
+	image = tf.clip_by_value(image, 0., 255.)
+	return image
+
+	
 def preprocess_image(image_buffer, meanstd, train, preserve_view=False):
 	"""Contruct batches of training or evaluation examples from the image dataset.
 
@@ -204,10 +233,12 @@ def preprocess_image(image_buffer, meanstd, train, preserve_view=False):
 	
 	if train:
 		if not preserve_view:
-			# TODO: Rotations!
-	
-			# randomly horizontal flip
+			# randomly flip
 			preprocessed_image = tf.image.random_flip_left_right(preprocessed_image)
+			preprocessed_image = tf.image.random_flip_up_down(preprocessed_image)
+		
+		# Apply color distortions (brightness, etc)
+		preprocessed_image = distort_color(preprocessed_image)
 	
 		# zero pad by 4 pixels on all sides
 		preprocessed_image = tf.image.resize_image_with_crop_or_pad(
