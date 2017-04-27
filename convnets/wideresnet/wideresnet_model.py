@@ -281,7 +281,7 @@ def _batch_norm(inputs, decay=0.999, center=True, scale=False,
 									trainable=trainable, collections=collections)
 		# Create moving_mean and moving_variance add them to
 		# GraphKeys.MOVING_AVERAGE_VARIABLES collections.
-		moving_collections = [moving_vars, tf.GraphKeys.MOVING_AVERAGE_VARIABLES]
+		moving_collections = [moving_vars, tf.GraphKeys.MOVING_AVERAGE_VARIABLES, tf.GraphKeys.GLOBAL_VARIABLES]
 		if restore:
 			moving_collections.append(VARIABLES_TO_RESTORE)
 		moving_mean = tf.get_variable('moving_mean',
