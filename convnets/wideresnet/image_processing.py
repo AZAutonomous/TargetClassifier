@@ -45,9 +45,8 @@ from random import shuffle
 
 FLAGS = tf.app.flags.FLAGS
 
-# Batch size flag declared in wideresnet_model.py
-#tf.app.flags.DEFINE_integer('batch_size', 128,
-#							"""Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('batch_size', 128,
+							"""Number of images to process in a batch.""")
 tf.app.flags.DEFINE_integer('image_size', 32,
 							"""Provide square images of this size.""")
 tf.app.flags.DEFINE_integer('num_preprocess_threads', 4,
