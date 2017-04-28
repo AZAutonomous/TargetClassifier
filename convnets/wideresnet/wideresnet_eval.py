@@ -11,8 +11,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-import image_processing # TODO: Complete migration
-# import cifar10_input as inputs
+import image_processing
 import wideresnet_model as wideresnet
 
 FLAGS = tf.app.flags.FLAGS
@@ -111,7 +110,6 @@ def evaluate(dataset, classname=None, scope=None):
 	"""Evaluate model on Dataset for a number of steps."""
 	with tf.Graph().as_default() as g:
 		# Get images and labels from the dataset.
-		# images, labels = inputs.inputs(dataset)
 		images, labels = image_processing.inputs(dataset, classname=classname)
 
 		# Build a Graph that computes the logits predictions from the
