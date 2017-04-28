@@ -38,16 +38,16 @@ class Shapes(Dataset):
 		
 	def meanstd(self):
 		"""Returns mean and stddev of dataset as numpy array"""
-		mean = [60.245, 130.373, 129.667] # R,G,B #TODO
-		stddev = [56.156, 52.878, 55.274] # R,G,B #TODO
+		mean = [62.026, 128.710, 131.434]
+		stddev = [53.492, 50.432, 52.819]
 		return [mean, stddev]
 
 	def num_examples_per_epoch(self):
 		"""Returns the number of examples in the data subset."""
 		if self.subset == 'train':
-			return 40274 #TODO
+			return 88452
 		if self.subset == 'validation':
-			return 1846 #TODO
+			return 37908
 
 	def download_data_files(self, dest_directory):
 		print("Downloading data is not currently supported")
