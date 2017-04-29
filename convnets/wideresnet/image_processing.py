@@ -194,18 +194,8 @@ def distort_color(image):
 	Returns:
 		color-distorted image
 	"""
-	def random_brightness(image):
-		return tf.image.random_brightness(image, max_delta=32./255.)
-	def random_saturation(image):
-		return tf.image.random_saturation(image, lower=0.5, upper=1.5)
-	def random_hue(image):
-		return tf.image.random_hue(image, max_delta=0.2)
-	def random_contrast(image):
-		return tf.image.random_contrast(image, lower=0.5, upper=1.5)
-	distortions = [random_brightness, random_saturation, random_hue, random_contrast]
-	shuffle(distortions) # Randomize distortion order
-	for distort in distortions:
-		image = distort(image)
+	# Random brightness
+	image = tf.image.random_brightness(image, max_delta=32./255.)
 	
 	# Clamp distorted image to [0, 255]
 	image = tf.clip_by_value(image, 0., 255.)
