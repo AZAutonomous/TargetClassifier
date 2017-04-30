@@ -78,7 +78,7 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
 		
 		# Average Pool: (8x8x640) -> (1x1x640)
 		with tf.variable_scope('avg_pool'):
-			x = _batch_norm(block4, scope='batchnorm1')
+			x = _batch_norm(block4, scope='batchnorm1', is_training=for_training)
 			x = _relu(x, leakiness=0.0)
 			pool = _avg_pool(x, filter_size=8, stride=1)
 		
@@ -169,10 +169,10 @@ def _residual_block(inputs, num_filters_out, kernel_size, stride, count,
 		# Stack additional units
 		for i in xrange(2, count+1):
 			x = _residual(x,
-										num_filters_out, kernel_size, 1,
-										num_filters_out, kernel_size, 1,
-										is_training=is_training, restore=restore,
-										scope='residual_unit_%d' % i, reuse=reuse)
+							num_filters_out, kernel_size, 1,
+							num_filters_out, kernel_size, 1,
+							is_training=is_training, restore=restore,
+							scope='residual_unit_%d' % i, reuse=reuse)
 		return x
 
 def _residual(inputs, 
@@ -202,14 +202,14 @@ def _residual(inputs,
 		x_orig = inputs
 		
 		# Convolution Layer 1
-		x = _batch_norm(inputs, scope='batchnorm1', restore=restore)
+		x = _batch_norm(inputs, scope='batchnorm1', is_training=is_training, restore=restore)
 		x = _relu(x, leakiness=0.0)
 		x = _conv(x, num_filters_out_1, kernel_size_1, stride_1,
 							scope='conv1', reuse=reuse, restore=restore)
 		_activation_summary(x)
 
 		# Convolution Layer 2
-		x = _batch_norm(x, scope='batchnorm2')
+		x = _batch_norm(x, scope='batchnorm2', is_training=is_training, restore=restore)
 		x = _relu(x, leakiness=0.0)
 		x = _conv(x, num_filters_out_2, kernel_size_2, stride_2,
 							scope='conv2', reuse=reuse, restore=restore)
