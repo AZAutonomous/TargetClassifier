@@ -138,6 +138,12 @@ class TargetClassifier():
 				image: np.array of size [1, width, height, depth]
 		'''
 		im = image.copy()
+
+		# Change from BGR (OpenCV) to RGB
+		b = im[:,:,0].copy()
+		im[:,:,0] = im[:,:,2] # Put red channel in [:,:,0]
+		im[:,:,2] = b # Put blue channel in [:,:,2]
+
 		# Resize image as necessary
 		if (np.greater(im.shape[:2], [IMAGE_SIZE, IMAGE_SIZE]).any()):
 			# Scale down
@@ -145,6 +151,7 @@ class TargetClassifier():
 		elif (np.less(im.shape[:2], [IMAGE_SIZE, IMAGE_SIZE]).any()):
 			# Scale up
 			im = cv2.resize(im, dsize=(IMAGE_SIZE, IMAGE_SIZE), interpolation=cv2.INTER_CUBIC)
+
 		# MeanStd normalization
 		im = np.subtract(im, self.mean)
 		im = np.divide(im, self.stddev)
