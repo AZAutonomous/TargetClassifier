@@ -29,11 +29,11 @@ DATA_URL = 'azautonomous.com' # TODO
 class Shapes(Dataset):
 	"""SUAS Shapes dataset"""
 	def __init__(self, subset):
-		super(Shapes, self).__init__('Shapes', subset)
+		super(Shapes, self).__init__('AlphanumColor', subset)
 
 	def num_classes(self):
 		"""Returns the number of classes in the data set."""
-		return 14 # 13 shapes + 1 background
+		return 11 # 10 colors + 1 background
 		
 	def meanstd(self):
 		"""Returns mean and stddev of dataset as numpy array"""
