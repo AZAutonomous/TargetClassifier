@@ -2,6 +2,8 @@
 import rospy
 import cv2
 import argparse
+import math
+import utm
 
 from obe_toolset.msg import ImageAndPose
 from cv_bridge import CvBridge
@@ -36,7 +38,10 @@ def callback(data):
 	data.roll # Unused
 	data.pitch # Unused
 	data.yaw # Radians CCW from east
-	classifier.classify_and_maybe_transmit(image)
+	location = utm.to_latlon(data.x, data.y, ZONE, ZONE_CHAR) # TODO: ZONE?
+	orientation = math.degrees(data.yaw) + 90
+	classifier.classify_and_maybe_transmit(image, location=location,
+	                                       orientation=orientation)
 
 def run():
 	rospy.init_node('ROI_Listener', anonymous=True)
