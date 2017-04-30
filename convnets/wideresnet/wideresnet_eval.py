@@ -17,9 +17,9 @@ import wideresnet_model as wideresnet
 FLAGS = tf.app.flags.FLAGS
 
 # Eval directory/pathing flags
-tf.app.flags.DEFINE_string('eval_dir', '/tmp/cifar10_eval',
+tf.app.flags.DEFINE_string('eval_dir', '/tmp/aza_eval',
 							"""Directory where to write event logs.""")
-tf.app.flags.DEFINE_string('checkpoint_dir', '/tmp/cifar10_train',
+tf.app.flags.DEFINE_string('checkpoint_dir', '/tmp/aza_train',
 							"""Directory where to read model checkpoints.""")
 
 # Eval frequency flags
