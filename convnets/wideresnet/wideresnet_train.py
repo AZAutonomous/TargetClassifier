@@ -179,7 +179,7 @@ def train(dataset, classname=None, preserve_view=False, scope=None):
 
 			if step % 10 == 0:
 				examples_per_sec = FLAGS.batch_size / float(duration)
-				format_str = ('%s: step %d (batch %d), loss = %.2f (%.1f examples/sec; %.3f '
+				format_str = ('%s: step %d (epoch %d), loss = %.2f (%.1f examples/sec; %.3f '
 											'sec/batch)')
 				print(format_str % (datetime.now(), step, int(step/num_batches_per_epoch),
                                             loss_value,	examples_per_sec, duration))
