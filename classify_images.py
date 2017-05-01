@@ -70,7 +70,7 @@ class TargetClassifier():
 		self.shape_color_graph = tf.Graph()
 		with self.shape_color_graph.as_default():
 			self.inputs_shape_color = tf.placeholder(tf.float32, shape=[1, IMAGE_SIZE, IMAGE_SIZE, IMAGE_CHANNELS])
-			self.logits_shape_color = model.inference(self.inputs_shape_color, 11, scope='shape_color') # 10 shape_colors + background
+			self.logits_shape_color = model.inference(self.inputs_shape_color, 14, scope='shape_color') # 10 shape_colors + background # FIXME num_classes set to 14 to adjust for typo (ran out of training time to correct)
 			variable_averages = tf.train.ExponentialMovingAverage(
 									model.MOVING_AVERAGE_DECAY)
 			variables_to_restore = variable_averages.variables_to_restore()
@@ -81,7 +81,7 @@ class TargetClassifier():
 			shape_color_ckpt = tf.train.get_checkpoint_state(os.path.join(checkpoint_dir, 'shape_color'))
 			if shape_color_ckpt and shape_color_ckpt.model_checkpoint_path:
 				print('Reading shape_color model parameters from %s' % shape_color_ckpt.model_checkpoint_path)
-				#shape_color_saver.restore(self.shape_color_sess, self.shape_color_ckpt.model_checkpoint_path)
+				#shape_color_saver.restore(self.shape_color_sess, shape_color_ckpt.model_checkpoint_path)
 				saver.restore(self.shape_color_sess, shape_color_ckpt.model_checkpoint_path)
 			else:
 				print('Error restoring parameters for shape_color. Ensure checkpoint is stored in ${checkpoint_dir}/shape_color/')
