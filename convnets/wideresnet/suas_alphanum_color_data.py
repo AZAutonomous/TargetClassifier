@@ -26,10 +26,10 @@ import tarfile
 
 DATA_URL = 'azautonomous.com' # TODO 
 
-class Shapes(Dataset):
-	"""SUAS Shapes dataset"""
+class AlphanumColors(Dataset):
+	"""SUAS alphanum color dataset"""
 	def __init__(self, subset):
-		super(Shapes, self).__init__('AlphanumColor', subset)
+		super(AlphanumColors, self).__init__('AlphanumColor', subset)
 
 	def num_classes(self):
 		"""Returns the number of classes in the data set."""

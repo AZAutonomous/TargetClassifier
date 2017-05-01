@@ -25,13 +25,13 @@ import time
 import tensorflow as tf
 
 import wideresnet_train
-from suas_shapes_data import Shapes
+from suas_color_data import Colors
 
 FLAGS = tf.app.flags.FLAGS
 
 
 def main(_):
-	dataset = Shapes(subset=FLAGS.subset)
+	dataset = Colors(subset=FLAGS.subset)
 	assert dataset.data_files()
 	if tf.gfile.Exists(FLAGS.train_dir):
 		tf.gfile.DeleteRecursively(FLAGS.train_dir)
