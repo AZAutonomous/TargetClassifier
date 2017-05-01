@@ -166,7 +166,6 @@ class TargetClassifier():
 		'''
 		predictions = self.shape_sess.run([self.logits_shape],
 												feed_dict={self.inputs_shape: image})
-		print predictions # TODO DELETEME
 		class_out = np.argmax(predictions)
 		confidence = np.max(predictions)
 		# TODO: Do something with the confidence
@@ -260,17 +259,11 @@ class TargetClassifier():
 		
 		# Run respective image classifiers
 		shape = self.classify_shape(image)
-		#background_color = self.classify_shape_color(image)
-		#alphanumeric, rot = self.classify_letter(image)
-		#alphanumeric_color = self.classify_letter_color(image)
-		#latitude, longitude = self.extract_location(image) # TODO - input arg?
+		background_color = self.classify_shape_color(image)
+		alphanumeric, rot = self.classify_letter(image)
+		alphanumeric_color = self.classify_letter_color(image)
+		latitude, longitude = self.extract_location(image) # TODO - input arg?
 		# TODO: Get orientation using orientation_in + rot
-
-		# TODO: Delete these placeholders
-		background_color = 'LOL'
-		alphanumeric, rot = 'LOL', 1337
-		alphanumeric_color = 'REKT'
-		latitude, longitude = 1337, 9001
 
 		if DEBUG:
 			print 'Shape =', shape

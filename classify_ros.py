@@ -32,13 +32,13 @@ bridge = CvBridge()
 def callback(data):
 	image = bridge.imgmsg_to_cv2(data.image)
 	# TODO: Parse these
-	data.x # UTM coordinates in meters, east/west
-	data.y # UTM coordinates in meters, north/south
+	data.x # UTM coordinates (Easting)
+	data.y # UTM coordinates (Northing)
 	data.z # AGL altitude in meters
 	data.roll # Unused
 	data.pitch # Unused
 	data.yaw # Radians CCW from east
-	location = utm.to_latlon(data.x, data.y, ZONE, ZONE_CHAR) # TODO: ZONE?
+	location = utm.to_latlon(data.x, data.y, 12, 'S')
 	orientation = math.degrees(data.yaw) + 90
 	classifier.classify_and_maybe_transmit(image, location=location,
 	                                       orientation=orientation)
