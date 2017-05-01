@@ -70,7 +70,7 @@ class TargetClassifier():
 		self.shape_color_graph = tf.Graph()
 		with self.shape_color_graph.as_default():
 			self.inputs_shape_color = tf.placeholder(tf.float32, shape=[1, IMAGE_SIZE, IMAGE_SIZE, IMAGE_CHANNELS])
-			self.logits_shape_color = model.inference(self.inputs_shape_color, 14, scope='shape_color') # 10 shape_colors + background # FIXME num_classes set to 14 to adjust for typo (ran out of training time to correct)
+			self.logits_shape_color = model.inference(self.inputs_shape_color, 11, scope='shape_color') # 10 shape_colors + background
 			variable_averages = tf.train.ExponentialMovingAverage(
 									model.MOVING_AVERAGE_DECAY)
 			variables_to_restore = variable_averages.variables_to_restore()
