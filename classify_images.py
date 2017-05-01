@@ -85,7 +85,6 @@ class TargetClassifier():
 				saver.restore(self.shape_color_sess, shape_color_ckpt.model_checkpoint_path)
 			else:
 				print('Error restoring parameters for shape_color. Ensure checkpoint is stored in ${checkpoint_dir}/shape_color/')
-				print self.shape_color_graph	
 				# sys.exit(1)
 	
 		# Alphanum graph
@@ -164,12 +163,16 @@ class TargetClassifier():
 			Returns:
 				str: The classified shape, in human readable text
 		'''
-		predictions = self.shape_sess.run([self.logits_shape],
-												feed_dict={self.inputs_shape: image})
-		class_out = np.argmax(predictions)
-		confidence = np.max(predictions)
-		# TODO: Do something with the confidence
-		return self.shapes[class_out]
+		try:
+			predictions = self.shape_sess.run([self.logits_shape],
+			                                  feed_dict={self.inputs_shape: image})
+			class_out = np.argmax(predictions)
+			confidence = np.max(predictions)
+			# TODO: Do something with the confidence
+			return self.shapes[class_out]
+		# If checkpoint not loaded, ignore error and return None
+		except tf.errors.FailedPreconditionError:
+			return None
 	
 	def classify_shape_color(self, image):
 		''' Extract the shape color of the target
@@ -177,12 +180,16 @@ class TargetClassifier():
 				Returns:
 					str: The classified color, in human readable text
 		'''
-		predictions = self.shape_color_sess.run([self.logits_shape_color],
-												feed_dict={self.inputs_shape_color: image})
-		class_out = np.argmax(predictions)
-		confidence = np.max(predictions)
-		# TODO: Do something with the confidence
-		return self.colors[class_out]
+		try:
+			predictions = self.shape_color_sess.run([self.logits_shape_color],
+				                                 feed_dict={self.inputs_shape_color: image})
+			class_out = np.argmax(predictions)
+			confidence = np.max(predictions)
+			# TODO: Do something with the confidence
+			return self.colors[class_out]
+		# If checkpoint not loaded, ignore error and return None
+		except tf.errors.FailedPreconditionError:
+			return None
 	
 	# TODO
 	def classify_letter(self, image):
@@ -192,19 +199,23 @@ class TargetClassifier():
 					str: The classified letter, in human readable text
 					str: Amount rotated clockwise, in degrees (int)
 		'''
-		# TODO: Rotate input by some interval to detect orientation
-		rot = 0
-		class_out_dict = {}
-		while (rot < 360):
-			# TODO: Rotate image clockwise by rot degrees
-			predictions = self.alphanum_sess.run([self.logits_alphanum],
-													feed_dict={self.inputs_alphanum: image})
-			class_out_dict[np.max(predictions)] = np.argmax(predictions)
-			rot += 45 # 45 degree stride. If computation budget allows, consider increasing to 22.5 deg
-		confidence = max(class_out_dict) # Maximum confidence from classifications
-		class_out = np.argmax(predictions)
-		# TODO: Do something with the confidence
-		return self.alphanums[class_out], rot
+		try:
+			# TODO: Rotate input by some interval to detect orientation
+			rot = 0
+			class_out_dict = {}
+			while (rot < 360):
+				# TODO: Rotate image clockwise by rot degrees
+				predictions = self.alphanum_sess.run([self.logits_alphanum],
+				                                feed_dict={self.inputs_alphanum: image})
+				class_out_dict[np.max(predictions)] = np.argmax(predictions)
+				rot += 45 # 45 degree stride. If computation budget allows, consider increasing to 22.5 deg
+			confidence = max(class_out_dict) # Maximum confidence from classifications
+			class_out = np.argmax(predictions)
+			# TODO: Do something with the confidence
+			return self.alphanums[class_out], rot
+		# If checkpoint not loaded, ignore error and return None
+		except tf.errors.FailedPreconditionError:
+			return None, None
 	
 	def classify_letter_color(self, image):
 		''' Extract the letter color of the target
@@ -212,23 +223,17 @@ class TargetClassifier():
 				Returns:
 					str: The classified color, in human readable text
 		'''
-		predictions = self.alphanum_color_sess.run([self.logits_alphanum_color],
-													feed_dict={self.inputs_alphanum_color: image})
-		class_out = np.argmax(predictions)
-		confidence = np.max(predictions)
-		# TODO: Do something with the confidence
-		return self.colors[class_out]
-	
-	# TODO
-	def extract_location(self, todo): # TODO: Decide on input format
-		''' Extract the location of the target
-				Args: TODO/TBD
-				Returns:
-					float32: latitude
-					float32: longitude
-		'''
-		return 0, 0 # FIXME/TODO
-	
+		try:
+			predictions = self.alphanum_color_sess.run([self.logits_alphanum_color],
+			                                     feed_dict={self.inputs_alphanum_color: image})
+			class_out = np.argmax(predictions)
+			confidence = np.max(predictions)
+			# TODO: Do something with the confidence
+			return self.colors[class_out]
+		# If checkpoint not loaded, ignore error and return None
+		except tf.errors.FailedPreconditionError:
+			return None
+
 	def check_valid(self, packet):
 		''' Check whether the prepared output packet is valid
 				Args:
@@ -247,14 +252,16 @@ class TargetClassifier():
 	
 			return True
 	
-	def classify_and_maybe_transmit(self, image, location=None, orientation=None):
+	def classify_and_maybe_transmit(self, image, location=(None, None), orientation=None, demodir=None):
 		''' Main worker function for image classification. Transmits depending on validity
 			Args:
 				image: np.array of size [width, height, depth]
 				location: tuple of GPS coordinates as (lat, lon)
 				orientation: degree value in range [-180, 180],
 							 where 0 represents due north and 90 represents due east
+				demodir: directory to store demo values (for demo page)
 		'''
+		im = image.copy() # TODO: Deleteme, used only for demo
 		image = self.preprocess_image(image)
 		
 		# Run respective image classifiers
@@ -262,7 +269,7 @@ class TargetClassifier():
 		background_color = self.classify_shape_color(image)
 		alphanumeric, rot = self.classify_letter(image)
 		alphanumeric_color = self.classify_letter_color(image)
-		latitude, longitude = self.extract_location(image) # TODO - input arg?
+		latitude, longitude = location
 		# TODO: Get orientation using orientation_in + rot
 
 		if DEBUG:
@@ -292,10 +299,20 @@ class TargetClassifier():
 			packet["id"] = self.target_id
 			json_packet = json.dumps(packet)
 			# TODO: Transmit data to interop server
+			# If in demo mode (design day), print to a directory
+			if demodir is not None and os.path.isdir(demodir):
+					cv2.imwrite(os.path.join(demodir, 'roi.jpg'), im)
+					with open(os.path.join(demodir, 'target_info.txt'), 'w') as f:
+						f.write(shape + "\n")
+						f.write(background_color + "\n")
+						f.write(alphanumeric + "\n")
 			# TODO (optional): build database of detected targets, correct mistakes
 			self.target_id += 1
+			return True
 		else:
-			print('INFO: Processed invalid target in {}'.format(f))
+			print('INFO: An invalid target was discarded')
+			return False
+
 
 def main():
 	# Create command line args
