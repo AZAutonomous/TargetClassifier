@@ -37,8 +37,8 @@ class Colors(Dataset):
 		
 	def meanstd(self):
 		"""Returns mean and stddev of dataset as numpy array"""
-		mean = [62.026, 128.710, 131.434]
-		stddev = [53.492, 50.432, 52.819]
+		mean = [84.409, 102.408, 120.842]
+		stddev = [54.420, 51.711, 58.137]
 		return [mean, stddev]
 
 	def num_examples_per_epoch(self):
