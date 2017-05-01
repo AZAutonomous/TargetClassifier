@@ -169,6 +169,8 @@ class TargetClassifier():
 			class_out = np.argmax(predictions)
 			confidence = np.max(predictions)
 			# TODO: Do something with the confidence
+			if DEBUG:
+				print("Shape confidence = %f" % confidence)
 			return self.shapes[class_out]
 		# If checkpoint not loaded, ignore error and return None
 		except tf.errors.FailedPreconditionError:
@@ -185,13 +187,14 @@ class TargetClassifier():
 				                                 feed_dict={self.inputs_shape_color: image})
 			class_out = np.argmax(predictions)
 			confidence = np.max(predictions)
+			if DEBUG:
+				print("Color confidence = %f" % confidence)
 			# TODO: Do something with the confidence
 			return self.colors[class_out]
 		# If checkpoint not loaded, ignore error and return None
 		except tf.errors.FailedPreconditionError:
 			return None
 	
-	# TODO
 	def classify_letter(self, image):
 		''' Extract the letter color of the target
 				Args: The input image
@@ -210,6 +213,8 @@ class TargetClassifier():
 				class_out_dict[np.max(predictions)] = np.argmax(predictions)
 				rot += 45 # 45 degree stride. If computation budget allows, consider increasing to 22.5 deg
 			confidence = max(class_out_dict) # Maximum confidence from classifications
+			if DEBUG:
+				print("Letter confidence = %f" % confidence)
 			class_out = np.argmax(predictions)
 			# TODO: Do something with the confidence
 			return self.alphanums[class_out], rot
@@ -229,6 +234,8 @@ class TargetClassifier():
 			class_out = np.argmax(predictions)
 			confidence = np.max(predictions)
 			# TODO: Do something with the confidence
+			if DEBUG:
+				print("Letter color confidence = %f" % confidence)
 			return self.colors[class_out]
 		# If checkpoint not loaded, ignore error and return None
 		except tf.errors.FailedPreconditionError:
