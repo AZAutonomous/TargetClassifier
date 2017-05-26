@@ -220,7 +220,7 @@ def preprocess_image(image_buffer, meanstd, train, preserve_view=False):
 	
 	image = decode_jpeg(image_buffer)
 	# assert image.get_shape() == [image_size, image_size, 3]
-	
+
 	# meanstd normalization against entire dataset
 	preprocessed_image = mean_std(image, meanstd)
 	
@@ -242,6 +242,10 @@ def preprocess_image(image_buffer, meanstd, train, preserve_view=False):
 		# randomly crop back to 32x32
 		preprocessed_image = tf.random_crop(preprocessed_image,
 												[image_size, image_size, 3])
+	# Validation, resize to 32x32 just in case it's a different size
+	else:
+		preprocessed_image = tf.image.resize_images(preprocessed_image, [image_size, image_size],
+		                                            method=tf.image.ResizeMethod.BICUBIC)
 
 	preprocessed_image.set_shape([image_size, image_size, 3])
 
