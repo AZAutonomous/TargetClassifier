@@ -14,6 +14,7 @@ import os
 import sys
 import json
 
+from multiprocessing import Pool
 import numpy as np
 import cv2
 import tensorflow as tf
@@ -81,7 +82,7 @@ class TargetClassifier():
 			shape_color_ckpt = tf.train.get_checkpoint_state(os.path.join(checkpoint_dir, 'shape_color'))
 			if shape_color_ckpt and shape_color_ckpt.model_checkpoint_path:
 				print('Reading shape_color model parameters from %s' % shape_color_ckpt.model_checkpoint_path)
-				#shape_color_saver.restore(self.shape_color_sess, shape_color_ckpt.model_checkpoint_path)
+				#shape_color_saver.restore(self.shape_color_sess, self.shape_color_ckpt.model_checkpoint_path)
 				saver.restore(self.shape_color_sess, shape_color_ckpt.model_checkpoint_path)
 			else:
 				print('Error restoring parameters for shape_color. Ensure checkpoint is stored in ${checkpoint_dir}/shape_color/')
@@ -169,8 +170,6 @@ class TargetClassifier():
 			class_out = np.argmax(predictions)
 			confidence = np.max(predictions)
 			# TODO: Do something with the confidence
-			if DEBUG:
-				print("Shape confidence = %f" % confidence)
 			return self.shapes[class_out]
 		# If checkpoint not loaded, ignore error and return None
 		except tf.errors.FailedPreconditionError:
@@ -187,8 +186,6 @@ class TargetClassifier():
 				                                 feed_dict={self.inputs_shape_color: image})
 			class_out = np.argmax(predictions)
 			confidence = np.max(predictions)
-			if DEBUG:
-				print("Color confidence = %f" % confidence)
 			# TODO: Do something with the confidence
 			return self.colors[class_out]
 		# If checkpoint not loaded, ignore error and return None
@@ -213,8 +210,6 @@ class TargetClassifier():
 				class_out_dict[np.max(predictions)] = np.argmax(predictions)
 				rot += 45 # 45 degree stride. If computation budget allows, consider increasing to 22.5 deg
 			confidence = max(class_out_dict) # Maximum confidence from classifications
-			if DEBUG:
-				print("Letter confidence = %f" % confidence)
 			class_out = np.argmax(predictions)
 			# TODO: Do something with the confidence
 			return self.alphanums[class_out], rot
@@ -234,12 +229,21 @@ class TargetClassifier():
 			class_out = np.argmax(predictions)
 			confidence = np.max(predictions)
 			# TODO: Do something with the confidence
-			if DEBUG:
-				print("Letter color confidence = %f" % confidence)
 			return self.colors[class_out]
 		# If checkpoint not loaded, ignore error and return None
 		except tf.errors.FailedPreconditionError:
 			return None
+
+	# TODO
+	def extract_colors(self, image):
+		''' Extract color data from image using clustering algorithm
+				Args:
+				  image: input image (np.array)
+				Returns:
+				  background_color: a string representing the target background color (i.e. shape color)
+					alphanum_color: a string representing the target alphanumeric color (i.e. letter color)
+		'''
+		pass
 
 	def check_valid(self, packet):
 		''' Check whether the prepared output packet is valid
@@ -259,25 +263,30 @@ class TargetClassifier():
 	
 			return True
 	
-	def classify_and_maybe_transmit(self, image, location=(None, None), orientation=None, demodir=None):
+	def classify_and_maybe_transmit(self, image, location=(None, None), orientation=None):
 		''' Main worker function for image classification. Transmits depending on validity
 			Args:
 				image: np.array of size [width, height, depth]
 				location: tuple of GPS coordinates as (lat, lon)
 				orientation: degree value in range [-180, 180],
 							 where 0 represents due north and 90 represents due east
-				demodir: directory to store demo values (for demo page)
 		'''
-		im = image.copy() # TODO: Deleteme, used only for demo
 		image = self.preprocess_image(image)
 		
+		# Set up multiprocessing to asynchronously do stuff on CPU
+		pool = Pool()
+		res = pool.apply_async(self.extract_colors, image)
+
 		# Run respective image classifiers
 		shape = self.classify_shape(image)
-		background_color = self.classify_shape_color(image)
+		#background_color = self.classify_shape_color(image)
 		alphanumeric, rot = self.classify_letter(image)
-		alphanumeric_color = self.classify_letter_color(image)
+		#alphanumeric_color = self.classify_letter_color(image)
 		latitude, longitude = location
 		# TODO: Get orientation using orientation_in + rot
+
+		res.wait()
+		background_color, alphanumeric_color = res.get(timeout=3)
 
 		if DEBUG:
 			print 'Shape =', shape
@@ -298,7 +307,7 @@ class TargetClassifier():
 				"alphanumeric_color": alphanumeric_color,
 				"description": None,
 				"autonomous": True
-				}
+			}
 	
 		# Check for false positives or otherwise invalid targets
 		if self.check_valid(packet):
@@ -306,13 +315,6 @@ class TargetClassifier():
 			packet["id"] = self.target_id
 			json_packet = json.dumps(packet)
 			# TODO: Transmit data to interop server
-			# If in demo mode (design day), print to a directory
-			if demodir is not None and os.path.isdir(demodir):
-					cv2.imwrite(os.path.join(demodir, 'roi.jpg'), im)
-					with open(os.path.join(demodir, 'target_info.txt'), 'w') as f:
-						f.write(shape + "\n")
-						f.write(background_color + "\n")
-						f.write(alphanumeric + "\n")
 			# TODO (optional): build database of detected targets, correct mistakes
 			self.target_id += 1
 			return True
