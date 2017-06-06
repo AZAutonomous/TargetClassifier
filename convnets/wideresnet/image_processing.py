@@ -224,7 +224,7 @@ def preprocess_image(image_buffer, meanstd, train, preserve_view=False):
 	# meanstd normalization against entire dataset
 	preprocessed_image = mean_std(image, meanstd)
 	
-        preprocessed_image = tf.image.resize_images(preprocessed_image, [image_size, image_size],
+	preprocessed_image = tf.image.resize_images(preprocessed_image, [image_size, image_size],
 	                                            method=tf.image.ResizeMethod.BICUBIC)
 	
 	if train:
