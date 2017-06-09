@@ -88,7 +88,7 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
 					print('%s: [%d batches out of %d] (%.1f examples/sec; %.3f'
 					      'sec/batch)' % (datetime.now(), step, num_iter,
 					      examples_per_sec, sec_per_batch))
-					      start_time = time.time()
+					start_time = time.time()
 
 			# Compute precision @ 1.
 			precision = true_count / total_sample_count
