@@ -68,8 +68,15 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
 			x = _relu(x, leakiness=0.0)
 			x = _batch_norm(x, scope='batchnorm1', is_training=for_training)
 			_activation_summary(x)
+
+		# Layer 3: (1x1x800) ->		(1x1x1600)
+		with tf.variable_scope('layer3'):
+			x = _conv(x, 1600, 1, 1, padding='VALID', scope='fc1')
+			x = _relu(x, leakiness=0.0)
+			x = _batch_norm(x, scope='batchnorm1', is_training=for_training)
+			_activation_summary(x)
 		
-		# Fully connected: (1x1x1000) -> (1x1xNUM_CLASSES)
+		# Fully connected: (1x1x1600) -> (1x1xNUM_CLASSES)
 		with tf.variable_scope('output'):
 			logits = _conv(x, num_classes, 1, is_training=for_training,
 				               restore=restore_logits, scope='fc1')
