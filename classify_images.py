@@ -263,9 +263,9 @@ class TargetClassifier():
 
 		# Run respective image classifiers
 		shape = self.classify_shape(image)
-		#background_color = self.classify_shape_color(image)
+		background_color = self.classify_shape_color(image)
 		alphanumeric, rot = self.classify_letter(image)
-		#alphanumeric_color = self.classify_letter_color(image)
+		alphanumeric_color = self.classify_letter_color(image)
 		latitude, longitude = location
 		# TODO: Get orientation using orientation_in + rot
 
@@ -291,17 +291,26 @@ class TargetClassifier():
 			}
 	
 		# Check for false positives or otherwise invalid targets
-		if self.check_valid(packet):
+		packet_valid = self.check_valid(packet)
+		if packet_valid:
 			print('INFO: Transmitting target %d' % self.target_id)
 			packet["id"] = self.target_id
 			json_packet = json.dumps(packet)
 			# TODO: Transmit data to interop server
 			# TODO (optional): build database of detected targets, correct mistakes
 			self.target_id += 1
-			return True
 		else:
 			print('INFO: An invalid target was discarded')
-			return False
+		return packet_valid, packet
+
+def get_unique_path(rootdir, subdir, filename):
+	counter = 0
+	processed_dir = subdir + str(counter).zfill(2)
+	# Increment counter until we find unused processed_##/file location
+	while os.path.exists(os.path.join(rootdir, processed_dir, filename)):
+		counter += 1
+		processed_dir = subdir + str(counter).zfill(2)
+	return processed_dir
 
 
 def main():
@@ -340,8 +349,8 @@ def main():
 	# Initialize classifiers
 	classifier = TargetClassifier(args.userid, args.checkpoint_dir)
 
-	print 'Running on directory:\t\t', directory
-	print 'Searching for images of format:\t', ext
+	print('Running on directory: %s\t\t' % directory)
+	print('Searching for images of format: %s\t' % ext)
 
 	print("INFO: Beginning infinite loop. To terminate, use Ctrl+C")
 	while True:
@@ -349,21 +358,24 @@ def main():
 		for f in os.listdir(directory):
 			if f.lower().endswith(ext):
 				image = cv2.imread(os.path.join(directory, f))
-				classifier.classify_and_maybe_transmit(image)
+				packet_valid, labels = classifier.classify_and_maybe_transmit(image)
 				# Move processed image into processed_## subdir
-				counter = 0
-				processedDir = 'processed_' + str(counter).zfill(2)
-				# Increment counter until we find unused processed_##/file location
-				while os.path.exists(os.path.join(directory, processedDir, f)):
-					counter += 1
-					processedDir = 'processed_' + str(counter).zfill(2)
+				if packet_valid:
+					processed_dir = get_unique_path(directory, 'processed_', f)
+				else:
+					processed_dir = get_unique_path(directory, 'falsepositives_', f)
 				# NOTE: Program will continue to work after counter > 99, but naming
-				#	   convention will be violated (e.g. processed_101/foo.jpg)
+				#       convention will be violated (e.g. processed_101/foo.jpg)
 				# Make subdirectories as necessary
-				if not os.path.exists(os.path.join(directory, processedDir)):
-					os.mkdir(os.path.join(directory, processedDir))
+				if not os.path.exists(processed_dir):
+					os.mkdir(processed_dir)
 				# Move processed file to processed_##/ subdirectory
-				os.rename(os.path.join(directory, f), os.path.join(directory, processedDir, f))
+				os.rename(os.path.join(directory, f), os.path.join(processed_dir, f))
+				# Write labels as JSON
+				json_filename = f.rsplit('.', 1)[0] + '.json'
+				json_filepath = os.path.join(processed_dir, json_filename)
+				with open(json_filepath, 'w') as json_file:
+					json.dump(labels, json_file)
 
 if __name__ == "__main__":
 	print("Welcome to AZA's Image Classification Program")
