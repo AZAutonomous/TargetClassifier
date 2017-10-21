@@ -14,7 +14,6 @@ import os
 import sys
 import json
 
-from multiprocessing import Pool
 import numpy as np
 import cv2
 import tensorflow as tf
@@ -234,17 +233,6 @@ class TargetClassifier():
 		except tf.errors.FailedPreconditionError:
 			return None
 
-	# TODO
-	def extract_colors(self, image):
-		''' Extract color data from image using clustering algorithm
-				Args:
-				  image: input image (np.array)
-				Returns:
-				  background_color: a string representing the target background color (i.e. shape color)
-					alphanum_color: a string representing the target alphanumeric color (i.e. letter color)
-		'''
-		pass
-
 	def check_valid(self, packet):
 		''' Check whether the prepared output packet is valid
 				Args:
@@ -272,10 +260,6 @@ class TargetClassifier():
 							 where 0 represents due north and 90 represents due east
 		'''
 		image = self.preprocess_image(image)
-		
-		# Set up multiprocessing to asynchronously do stuff on CPU
-		pool = Pool()
-		res = pool.apply_async(self.extract_colors, image)
 
 		# Run respective image classifiers
 		shape = self.classify_shape(image)
@@ -284,9 +268,6 @@ class TargetClassifier():
 		#alphanumeric_color = self.classify_letter_color(image)
 		latitude, longitude = location
 		# TODO: Get orientation using orientation_in + rot
-
-		res.wait()
-		background_color, alphanumeric_color = res.get(timeout=3)
 
 		if DEBUG:
 			print 'Shape =', shape
